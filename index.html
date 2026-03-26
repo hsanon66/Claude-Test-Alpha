@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crystal Archipelago – The Wizard's Stand</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{background:#0a0a1a;overflow:hidden;font-family:'Georgia',serif;}
+    #c{display:block;width:100vw;height:100vh;}
+
+    /* ── Resource Bar ── */
+    #res-bar{
+      position:absolute;top:10px;left:50%;transform:translateX(-50%);
+      display:flex;gap:18px;background:rgba(0,0,0,.75);
+      padding:7px 22px;border-radius:25px;border:1px solid #5a3a10;
+      color:#ffd700;font-size:14px;pointer-events:none;
+      box-shadow:0 0 15px rgba(255,180,0,.15);
+    }
+    .ri{display:flex;align-items:center;gap:5px;}
+    .ri span.icon{font-size:17px;}
+
+    /* ── Mode Buttons ── */
+    #mode-bar{
+      position:absolute;top:55px;left:50%;transform:translateX(-50%);
+      display:flex;gap:8px;pointer-events:auto;
+    }
+    .mb{
+      padding:5px 14px;border-radius:18px;cursor:pointer;
+      border:1px solid #5a3a10;background:rgba(25,15,3,.85);
+      color:#d0b880;font-family:inherit;font-size:13px;transition:all .18s;
+    }
+    .mb:hover,.mb.active{background:rgba(90,55,8,.85);border-color:#ffd700;color:#ffd700;}
+
+    /* ── Build Menu ── */
+    #build-menu{
+      position:absolute;left:10px;top:50%;transform:translateY(-50%);
+      background:rgba(8,4,18,.93);border:2px solid #5a3a10;
+      border-radius:10px;padding:10px 8px;pointer-events:auto;display:none;
+      min-width:152px;
+    }
+    #build-menu h3{color:#ffd700;text-align:center;margin-bottom:8px;font-size:13px;letter-spacing:1px;}
+    .bb{
+      display:block;width:100%;padding:7px 9px;margin:3px 0;
+      background:rgba(50,30,5,.8);border:1px solid #5a3a10;
+      border-radius:5px;color:#e8d8b0;cursor:pointer;
+      font-family:inherit;font-size:12px;text-align:left;transition:background .15s;
+    }
+    .bb:hover{background:rgba(90,55,8,.9);}
+    .bb.sel{background:rgba(100,60,5,1);border-color:#ffd700;}
+    .bb.off{opacity:.45;cursor:not-allowed;}
+    .bc{font-size:10px;color:#888;margin-top:1px;}
+
+    /* ── Info Panels ── */
+    .panel{
+      position:absolute;background:rgba(8,4,18,.93);
+      border:2px solid #5a3a10;border-radius:10px;
+      padding:11px;color:#e0d0b8;pointer-events:auto;
+    }
+    .panel h3{font-size:13px;margin-bottom:7px;}
+    #wave-panel{right:10px;top:55px;min-width:175px;}
+    #wave-panel h3{color:#ff6644;}
+    #wave-timer{font-size:26px;color:#ff6644;text-align:center;font-weight:bold;}
+    #wave-desc{font-size:11px;color:#998;margin-top:4px;}
+    #obj-panel{right:10px;top:220px;min-width:175px;}
+    #obj-panel h3{color:#ffd700;}
+    .obj{font-size:11px;color:#998;margin:3px 0;}
+    .obj.done{color:#44ff88;text-decoration:line-through;}
+    .obj::before{content:'◆ ';}
+    #islands-panel{right:10px;bottom:10px;min-width:165px;}
+    #islands-panel h3{color:#ffd700;}
+    .isl{font-size:11px;margin:3px 0;}
+    .isl.friendly{color:#44ff88;}
+    .isl.enemy{color:#ff4444;}
+    .isl.neutral{color:#8888cc;}
+
+    /* ── Spell Bar ── */
+    #spell-bar{
+      position:absolute;bottom:16px;left:50%;transform:translateX(-50%);
+      display:flex;gap:8px;pointer-events:auto;
+    }
+    .sb{
+      width:60px;height:60px;border-radius:10px;
+      border:2px solid #5a3a10;background:rgba(20,10,3,.92);
+      cursor:pointer;display:flex;flex-direction:column;
+      align-items:center;justify-content:center;
+      color:#e8d8b0;font-size:20px;transition:all .15s;
+      position:relative;overflow:hidden;
+    }
+    .sb:hover{border-color:#ffd700;transform:translateY(-3px);}
+    .sb span{font-size:10px;color:#aaa;}
+    .scd{
+      position:absolute;bottom:0;left:0;right:0;
+      background:rgba(0,0,0,.65);pointer-events:none;
+      transition:height .1s linear;
+    }
+
+    /* ── Story Box ── */
+    #story-box{
+      position:absolute;bottom:90px;left:50%;transform:translateX(-50%);
+      width:720px;max-width:92vw;
+      background:rgba(8,3,20,.95);border:2px solid #7a5a20;
+      border-radius:10px;padding:14px 20px;
+      color:#f0e6c8;pointer-events:auto;display:none;
+      box-shadow:0 0 30px rgba(255,160,0,.1);
+    }
+    #story-speaker{color:#ffd700;font-weight:bold;font-size:15px;margin-bottom:7px;}
+    #story-text{font-size:14px;line-height:1.65;}
+    #story-cont{margin-top:9px;text-align:right;color:#777;font-size:12px;cursor:pointer;animation:blink 1s infinite;}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+    /* ── Notifications ── */
+    #notifs{
+      position:absolute;top:100px;left:50%;transform:translateX(-50%);
+      display:flex;flex-direction:column;align-items:center;gap:5px;
+      pointer-events:none;
+    }
+    .notif{
+      background:rgba(0,0,0,.82);border:1px solid #6a4a18;
+      border-radius:20px;padding:5px 16px;color:#f0e6c8;
+      font-size:13px;animation:fadeUp 3s forwards;white-space:nowrap;
+    }
+    @keyframes fadeUp{
+      0%{opacity:0;transform:translateY(8px)}
+      20%{opacity:1;transform:translateY(0)}
+      70%{opacity:1}
+      100%{opacity:0;transform:translateY(-18px)}
+    }
+
+    /* ── Tooltip ── */
+    #tip{
+      position:absolute;background:rgba(8,4,18,.97);
+      border:1px solid #6a4a18;border-radius:5px;
+      padding:7px 12px;color:#f0e6c8;font-size:12px;
+      pointer-events:none;display:none;max-width:200px;line-height:1.5;
+    }
+
+    /* ── Chapter Title ── */
+    #chap-title{
+      position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+      text-align:center;pointer-events:none;display:none;z-index:50;
+    }
+    #chap-title h2{font-size:38px;color:#ffd700;text-shadow:0 0 25px #ff8800,0 0 50px #ff4400;}
+    #chap-title h3{font-size:20px;color:#9b7ac8;margin-top:6px;letter-spacing:1px;}
+
+    /* ── Title Screen ── */
+    #title-screen{
+      position:absolute;inset:0;
+      background:radial-gradient(ellipse at center,#1a0a2e 0%,#060410 100%);
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      z-index:100;pointer-events:auto;
+    }
+    #title-screen h1{
+      font-size:52px;color:#ffd700;
+      text-shadow:0 0 20px #ff8800,0 0 50px #ff4400;
+      margin-bottom:8px;letter-spacing:3px;
+    }
+    #title-screen h2{font-size:19px;color:#9b7ac8;margin-bottom:40px;letter-spacing:2px;}
+    #start-btn{
+      padding:14px 52px;font-size:20px;cursor:pointer;
+      background:linear-gradient(135deg,#3a1e00,#7a5a10);
+      border:2px solid #ffd700;border-radius:30px;
+      color:#ffd700;font-family:'Georgia',serif;transition:all .3s;
+      text-shadow:0 0 10px #ffd70088;
+    }
+    #start-btn:hover{
+      background:linear-gradient(135deg,#7a5a10,#ffd700);
+      color:#1a0a00;transform:scale(1.06);
+      box-shadow:0 0 35px #ffd70066;
+    }
+    .title-hint{font-size:13px;color:#555;margin-top:30px;line-height:1.8;text-align:center;}
+
+    /* ── End Screen ── */
+    #end-screen{
+      position:absolute;inset:0;background:rgba(0,0,0,.85);
+      display:none;flex-direction:column;align-items:center;justify-content:center;
+      z-index:100;pointer-events:auto;
+    }
+    #end-screen h2{font-size:50px;color:#ffd700;margin-bottom:16px;}
+    #end-screen p{font-size:17px;color:#f0e6c8;margin-bottom:30px;text-align:center;max-width:520px;line-height:1.6;}
+    #restart-btn{
+      padding:11px 40px;font-size:17px;cursor:pointer;
+      background:rgba(50,30,5,.8);border:2px solid #ffd700;
+      border-radius:22px;color:#ffd700;font-family:'Georgia',serif;
+    }
+    #restart-btn:hover{background:rgba(100,60,5,.9);}
+
+    /* ── Controls Hint ── */
+    #ctrl-hint{
+      position:absolute;bottom:88px;right:12px;
+      color:#444;font-size:11px;text-align:right;
+      pointer-events:none;line-height:1.7;
+    }
+  </style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<!-- ══ UI OVERLAY ══ -->
+<div id="ui">
+
+  <!-- Title Screen -->
+  <div id="title-screen">
+    <h1>⚓ Crystal Archipelago ⚓</h1>
+    <h2>The Wizard's Stand</h2>
+    <button id="start-btn" onclick="game.startGame()">Begin Your Quest</button>
+    <div class="title-hint">
+      WASD / Arrow Keys — Move Camera &nbsp;|&nbsp; Scroll — Zoom<br>
+      Click Island — Harvest Resources &nbsp;|&nbsp; Build Mode — Place Defenses<br>
+      Spells — Click Spell Buttons &nbsp;|&nbsp; Survive 5 Chapters to Win!
+    </div>
+  </div>
+
+  <!-- Resource Bar -->
+  <div id="res-bar">
+    <div class="ri"><span class="icon">🪵</span><span id="r-wood">50</span></div>
+    <div class="ri"><span class="icon">🪨</span><span id="r-stone">30</span></div>
+    <div class="ri"><span class="icon">💎</span><span id="r-crystal">10</span></div>
+    <div class="ri"><span class="icon">🪙</span><span id="r-gold">100</span></div>
+  </div>
+
+  <!-- Mode Buttons -->
+  <div id="mode-bar">
+    <button class="mb active" id="btn-harvest" onclick="game.setMode('harvest')">⛏ Harvest</button>
+    <button class="mb" id="btn-build"   onclick="game.setMode('build')">🏗 Build</button>
+    <button class="mb" id="btn-train"   onclick="game.setMode('train')">⚔ Train</button>
+    <button class="mb" id="btn-sail"    onclick="game.setMode('sail')">⛵ Sail</button>
+  </div>
+
+  <!-- Build Menu -->
+  <div id="build-menu">
+    <h3>⚒ Buildings</h3>
+    <button class="bb" data-b="wizard_tower"  onclick="game.selectBuilding('wizard_tower')">
+      🔮 Wizard Tower<div class="bc">30🪵 20🪨</div>
+    </button>
+    <button class="bb" data-b="cannon_tower"  onclick="game.selectBuilding('cannon_tower')">
+      💣 Cannon Tower<div class="bc">20🪵 40🪨</div>
+    </button>
+    <button class="bb" data-b="wall"          onclick="game.selectBuilding('wall')">
+      🧱 Stone Wall<div class="bc">15🪨</div>
+    </button>
+    <button class="bb" data-b="barracks"      onclick="game.selectBuilding('barracks')">
+      ⚔ Barracks<div class="bc">40🪵 20🪨</div>
+    </button>
+    <button class="bb" data-b="shipyard"      onclick="game.selectBuilding('shipyard')">
+      ⚓ Shipyard<div class="bc">60🪵 20🪨</div>
+    </button>
+    <button class="bb" data-b="crystal_forge" onclick="game.selectBuilding('crystal_forge')">
+      ✨ Crystal Forge<div class="bc">25🪨 20💎</div>
+    </button>
+  </div>
+
+  <!-- Wave Panel -->
+  <div class="panel" id="wave-panel">
+    <h3>⚓ Enemy Activity</h3>
+    <div id="wave-timer">--:--</div>
+    <div id="wave-desc">Scouting the seas...</div>
+  </div>
+
+  <!-- Objectives -->
+  <div class="panel" id="obj-panel">
+    <h3>📜 Objectives</h3>
+    <div id="obj-list"></div>
+  </div>
+
+  <!-- Islands -->
+  <div class="panel" id="islands-panel">
+    <h3>🗺 Islands</h3>
+    <div id="island-list">
+      <div class="isl friendly">● Emerald Isle (Home)</div>
+      <div class="isl enemy"   id="isl-1">● Isle of Crimson</div>
+      <div class="isl enemy"   id="isl-2">● Skull Rock</div>
+      <div class="isl enemy"   id="isl-3">● Dread Citadel</div>
+    </div>
+  </div>
+
+  <!-- Spell Bar -->
+  <div id="spell-bar">
+    <button class="sb" id="sp-fireball" onclick="game.castSpell('fireball')" title="Fireball – Burns a group of enemies (cost: 5💎)">
+      🔥<span>Fireball</span>
+      <div class="scd" id="cd-fireball" style="height:0"></div>
+    </button>
+    <button class="sb" id="sp-shield" onclick="game.castSpell('shield')" title="Magic Shield – Protects buildings (cost: 3💎)">
+      🛡️<span>Shield</span>
+      <div class="scd" id="cd-shield" style="height:0"></div>
+    </button>
+    <button class="sb" id="sp-storm" onclick="game.castSpell('storm')" title="Lightning Storm – Strikes all ships (cost: 10💎)">
+      ⚡<span>Storm</span>
+      <div class="scd" id="cd-storm" style="height:0"></div>
+    </button>
+    <button class="sb" id="sp-summon" onclick="game.castSpell('summon')" title="Summon Golem – A stone defender (cost: 8💎)">
+      🗿<span>Golem</span>
+      <div class="scd" id="cd-summon" style="height:0"></div>
+    </button>
+  </div>
+
+  <!-- Story Box -->
+  <div id="story-box">
+    <div id="story-speaker"></div>
+    <div id="story-text"></div>
+    <div id="story-cont" onclick="game.storyNext()">▶ Click to continue</div>
+  </div>
+
+  <!-- Notifications -->
+  <div id="notifs"></div>
+
+  <!-- Tooltip -->
+  <div id="tip"></div>
+
+  <!-- Chapter Title -->
+  <div id="chap-title">
+    <h2 id="ct-ch"></h2>
+    <h3 id="ct-ti"></h3>
+  </div>
+
+  <!-- End Screen -->
+  <div id="end-screen">
+    <h2 id="end-title">Victory!</h2>
+    <p  id="end-text"></p>
+    <button id="restart-btn" onclick="location.reload()">Play Again</button>
+  </div>
+
+  <!-- Controls hint -->
+  <div id="ctrl-hint">
+    WASD: Camera &nbsp;|&nbsp; Scroll: Zoom<br>
+    Click: Interact
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+<script src="js/story.js"></script>
+<script src="js/models.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>
