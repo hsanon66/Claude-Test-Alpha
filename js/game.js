@@ -54,7 +54,7 @@ const game = {
   // ── state ──────────────────────────────────────────────────
   phase:        'title',    // title|dialogue|prep|wave|conquest|victory|defeat
   chapterIdx:   0,
-  res:          { wood:50, stone:30, crystal:10, gold:100 },
+  res:          { wood:120, stone:80, crystal:20, gold:200 },
   mode:         'harvest',
   selectedBldg: null,
   grid:         [],
@@ -180,15 +180,15 @@ const game = {
     geo.computeVertexNormals();
     this._oceanBase = new Float32Array(verts);
     this.oceanMesh = new THREE.Mesh(geo,
-      new THREE.MeshLambertMaterial({ color:0x0d4a7a, transparent:true, opacity:0.94 }));
+      new THREE.MeshLambertMaterial({ color:0x1a7acc, transparent:true, opacity:0.92 }));
     this.oceanMesh.receiveShadow = true;
     this.scene.add(this.oceanMesh);
-    // Dark sea floor disc filling the gap under the island
+    // Sea floor disc filling the gap between island base and ocean ring
     const floor = new THREE.Mesh(
-      new THREE.CylinderGeometry(20, 20, 0.5, 48),
-      new THREE.MeshLambertMaterial({ color:0x071e38 })
+      new THREE.CylinderGeometry(22, 22, 0.4, 48),
+      new THREE.MeshLambertMaterial({ color:0x0a3a5c })
     );
-    floor.position.y = -1.0;
+    floor.position.y = -1.15;
     this.scene.add(floor);
   },
 
@@ -216,12 +216,12 @@ const game = {
           this.heights[gz][gx] = -1.0;
         } else if (dist > ISLAND_R-1.9){
           this.grid[gz][gx] = CT.BEACH;
-          this.heights[gz][gx] = rng(0.55, 0.85);
+          this.heights[gz][gx] = rng(0.10, 0.22);
         } else {
           const r2 = Math.random();
           this.grid[gz][gx] = r2<0.17 ? CT.FOREST : r2<0.27 ? CT.ROCK : CT.LAND;
-          const peak = rng(1.5, 3.2) * ((ISLAND_R-dist)/ISLAND_R);
-          this.heights[gz][gx] = Math.max(0.6, peak);
+          const falloff = (ISLAND_R - dist) / ISLAND_R;
+          this.heights[gz][gx] = rng(0.25, 0.7) * falloff + 0.18;
         }
       }
     }
@@ -243,9 +243,14 @@ const game = {
     // 3) Place resource 3-D objects
     this._placeResMeshes();
 
-    // Island base skirt
-    const base = mkPlayerIslandBase(ISLAND_R * CELL_SZ * 0.97);
-    this.scene.add(base);
+    // Island base skirt — sandy underwater pedestal, top at y=-0.15 so terrain hides it
+    const baseR = ISLAND_R * CELL_SZ * 1.02;
+    const baseMesh = new THREE.Mesh(
+      new THREE.CylinderGeometry(baseR, baseR * 0.82, 1.6, 36),
+      new THREE.MeshLambertMaterial({ color: 0x9b8058 })
+    );
+    baseMesh.position.y = -0.95;   // top at y=-0.15, below beach tiles
+    this.scene.add(baseMesh);
   },
 
   _buildTerrain() {
@@ -300,7 +305,7 @@ const game = {
         if (obj){
           const {x,z} = cellWorld(gx,gz);
           const wy = this.heights[gz][gx];
-          obj.position.set(x+(Math.random()-.5)*.28, wy, z+(Math.random()-.5)*.28);
+          obj.position.set(x+(Math.random()-.5)*.28, wy + 0.02, z+(Math.random()-.5)*.28);
           this.scene.add(obj);
           this.resMeshes[`${gx},${gz}`] = obj;
         }
@@ -346,7 +351,7 @@ const game = {
 // ── §4  ENTITY CLASSES ───────────────────────────────────────
 
 class Building {
-  constructor(type, gx, gz, scene) {
+  constructor(type, gx, gz, scene, terrainY=0) {
     this.type = type;
     this.def  = BDEF[type];
     this.gx = gx; this.gz = gz;
@@ -356,7 +361,7 @@ class Building {
     this.alive = true;
     this.mesh = mkBuilding(type);
     const {x,z} = cellWorld(gx, gz);
-    this.mesh.position.set(x, 0, z);
+    this.mesh.position.set(x, terrainY, z);
     scene.add(this.mesh);
   }
   get x() { return this.mesh.position.x; }
@@ -726,9 +731,9 @@ Object.assign(game, {
   _doHarvest(gx, gz) {
     const ct = this.grid[gz][gx];
     const gains = {
-      [CT.FOREST]:  { wood:    11 + Math.floor(Math.random()*7) },
-      [CT.ROCK]:    { stone:   8  + Math.floor(Math.random()*6) },
-      [CT.CRYSTAL]: { crystal: 5  + Math.floor(Math.random()*4) },
+      [CT.FOREST]:  { wood:    20 + Math.floor(Math.random()*12) },
+      [CT.ROCK]:    { stone:   15 + Math.floor(Math.random()*10) },
+      [CT.CRYSTAL]: { crystal: 8  + Math.floor(Math.random()*6)  },
     }[ct];
     if (!gains) { this.notify('Nothing to harvest here.'); return; }
     for (const [k,v] of Object.entries(gains)) this.res[k] += v;
@@ -741,7 +746,7 @@ Object.assign(game, {
     this.grid[gz][gx] = CT.LAND;
     const [r,g,b] = ctColor(CT.LAND, this.heights[gz][gx]);
     this._setCellColor(gx, gz, r, g, b);
-    this.harvestedCells.push({ gx, gz, origType, timer: 45 });
+    this.harvestedCells.push({ gx, gz, origType, timer: 25 });
     this._checkObjectives();
   },
 
@@ -753,7 +758,7 @@ Object.assign(game, {
     for (const [k,v] of Object.entries(def.cost))
       if (this.res[k] < v) { this.notify(`Not enough ${k}!`); return; }
     for (const [k,v] of Object.entries(def.cost)) this.res[k] -= v;
-    const b = new Building(this.selectedBldg, gx, gz, this.scene);
+    const b = new Building(this.selectedBldg, gx, gz, this.scene, this.heights[gz][gx]);
     this.buildings.push(b);
     this.bldgMap[`${gx},${gz}`] = b;
     this.grid[gz][gx] = CT.BUILDING;
@@ -828,7 +833,7 @@ Object.assign(game, {
     const chap = STORY.chapters[idx];
     // Reset per-chapter state
     this.waveActive = false;
-    this.waveTimer = idx < 2 ? 70 : idx < 4 ? 55 : 45;
+    this.waveTimer = idx < 2 ? 120 : idx < 4 ? 90 : 75;
     this._updateObjUI();
     this._showChapTitle(chap.id, chap.title, chap.sub);
     setTimeout(()=>{
