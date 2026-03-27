@@ -125,8 +125,9 @@ const game = {
     sun.shadow.camera.top=42;   sun.shadow.camera.bottom=-42;
     sun.shadow.camera.near=1;   sun.shadow.camera.far=130;
     this.scene.add(sun);
-    this.scene.add(Object.assign(new THREE.DirectionalLight(0x3355aa, 0.32),
-      { position: new THREE.Vector3(-16,20,-22) }));
+    const moonLight = new THREE.DirectionalLight(0x3355aa, 0.32);
+    moonLight.position.set(-16, 20, -22);
+    this.scene.add(moonLight);
 
     // Ocean
     this._buildOcean();
