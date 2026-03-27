@@ -158,13 +158,38 @@ const game = {
   },
 
   _buildOcean() {
-    const geo = new THREE.PlaneGeometry(260, 260, 36, 36);
-    geo.rotateX(-Math.PI/2);
-    this._oceanBase = new Float32Array(geo.attributes.position.array);
+    // Ring geometry: starts OUTSIDE the island so it never covers it
+    const innerR = 20, outerR = 160, rings = 16, segs = 72;
+    const verts = [], idx = [];
+    for (let r = 0; r <= rings; r++) {
+      const radius = innerR + (outerR - innerR) * (r / rings);
+      for (let s = 0; s <= segs; s++) {
+        const angle = (s / segs) * Math.PI * 2;
+        verts.push(Math.cos(angle)*radius, 0, Math.sin(angle)*radius);
+      }
+    }
+    for (let r = 0; r < rings; r++) {
+      for (let s = 0; s < segs; s++) {
+        const a = r*(segs+1)+s, b=a+1, c=a+(segs+1), d=c+1;
+        idx.push(a,c,b, b,c,d);
+      }
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+    geo.setIndex(idx);
+    geo.computeVertexNormals();
+    this._oceanBase = new Float32Array(verts);
     this.oceanMesh = new THREE.Mesh(geo,
-      new THREE.MeshLambertMaterial({ color:0x0a3a6a, transparent:true, opacity:0.9 }));
+      new THREE.MeshLambertMaterial({ color:0x0d4a7a, transparent:true, opacity:0.94 }));
     this.oceanMesh.receiveShadow = true;
     this.scene.add(this.oceanMesh);
+    // Dark sea floor disc filling the gap under the island
+    const floor = new THREE.Mesh(
+      new THREE.CylinderGeometry(20, 20, 0.5, 48),
+      new THREE.MeshLambertMaterial({ color:0x071e38 })
+    );
+    floor.position.y = -1.0;
+    this.scene.add(floor);
   },
 
   _updateCam() {
@@ -982,15 +1007,13 @@ Object.assign(game, {
       this._updateCam();
     }
 
-    // Animate ocean — attenuate waves near island so they never flood it
+    // Animate ocean ring — safe to wave freely, ring never covers island
     if (this._oceanBase) {
       const t = performance.now() * 0.001;
       const pos = this.oceanMesh.geometry.attributes.position.array;
       for (let i=0; i<this._oceanBase.length; i+=3) {
         const ox = this._oceanBase[i], oz = this._oceanBase[i+2];
-        const od = Math.sqrt(ox*ox + oz*oz);
-        const atten = Math.min(1, Math.max(0, (od - 22) / 14));
-        pos[i+1] = (Math.sin(ox*0.15+t)*0.28 + Math.cos(oz*0.12+t*0.78)*0.2) * atten - 0.6;
+        pos[i+1] = Math.sin(ox*0.1+t)*0.26 + Math.cos(oz*0.08+t*0.72)*0.18;
       }
       this.oceanMesh.geometry.attributes.position.needsUpdate = true;
       this.oceanMesh.geometry.computeVertexNormals();
