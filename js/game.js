@@ -39,13 +39,13 @@ function rng(a,b){ return a + Math.random()*(b-a); }
 
 function ctColor(type, h) {
   switch(type){
-    case CT.BEACH:    return [0.86-h*.04, 0.74-h*.04, 0.52-h*.04];
-    case CT.LAND:     return [0.22+h*.1,  0.54+h*.08, 0.18+h*.05];
-    case CT.FOREST:   return [0.12+h*.05, 0.40+h*.06, 0.12+h*.03];
-    case CT.ROCK:     return [0.44+h*.05, 0.40+h*.05, 0.36+h*.04];
-    case CT.CRYSTAL:  return [0.35+h*.04, 0.18+h*.03, 0.60+h*.06];
-    case CT.BUILDING: return [0.30, 0.24, 0.20];
-    default:          return [0.05, 0.20, 0.44];   // water – mostly hidden
+    case CT.BEACH:    return [0.92, 0.82, 0.58];
+    case CT.LAND:     return [0.28+h*.06, 0.62+h*.06, 0.20+h*.04];
+    case CT.FOREST:   return [0.10+h*.04, 0.44+h*.05, 0.10+h*.03];
+    case CT.ROCK:     return [0.50+h*.04, 0.46+h*.04, 0.40+h*.03];
+    case CT.CRYSTAL:  return [0.45+h*.03, 0.20+h*.02, 0.75+h*.04];
+    case CT.BUILDING: return [0.32, 0.26, 0.22];
+    default:          return [0.04, 0.18, 0.42];
   }
 }
 
@@ -71,6 +71,7 @@ const game = {
   conquestDone: [false,false,false],
   spellCds:     { fireball:0, shield:0, storm:0, summon:0 },
   destroyCount: 0,
+  harvestedCells: [],
   dialogQueue:  [],
   dialogIdx:    0,
   _dialogDone:  null,
@@ -187,14 +188,15 @@ const game = {
         const dist = Math.sqrt(dx*dx+dz*dz);
         if (dist >= ISLAND_R){
           this.grid[gz][gx] = CT.WATER;
-          this.heights[gz][gx] = -0.55;
+          this.heights[gz][gx] = -1.0;
         } else if (dist > ISLAND_R-1.9){
           this.grid[gz][gx] = CT.BEACH;
-          this.heights[gz][gx] = rng(0.08,0.22);
+          this.heights[gz][gx] = rng(0.55, 0.85);
         } else {
           const r2 = Math.random();
           this.grid[gz][gx] = r2<0.17 ? CT.FOREST : r2<0.27 ? CT.ROCK : CT.LAND;
-          this.heights[gz][gx] = rng(0.22,0.58) * ((ISLAND_R-dist)/ISLAND_R);
+          const peak = rng(1.5, 3.2) * ((ISLAND_R-dist)/ISLAND_R);
+          this.heights[gz][gx] = Math.max(0.6, peak);
         }
       }
     }
@@ -430,10 +432,10 @@ class Ship {
       this.x += (-this.x/dist)*speed*dt;
       this.z += (-this.z/dist)*speed*dt;
       this.mesh.position.set(this.x, 0, this.z);
-      if (dist < 20) this.phase = 'broadside';
+      if (dist < 28) this.phase = 'broadside';
     } else {
       const orb = { galleon:0.22, frigate:0.28, sloop:0.36 }[this.type] || 0.3;
-      const tR  = { galleon:15,   frigate:14,   sloop:13   }[this.type] || 13;
+      const tR  = { galleon:24,   frigate:22,   sloop:20   }[this.type] || 22;
       this.angle += orb * dt;
       const cur = this.r, newR = cur + (tR - cur)*dt*0.9;
       this.x = Math.sin(this.angle)*newR;
@@ -514,7 +516,7 @@ Object.assign(game, {
     // Ships sail, orbit, fire, deploy
     for (const s of this.ships.filter(x=>x.alive)) {
       s.update(dt);
-      if (s.phase==='broadside' && s.r<12 && !s.piratesDeployed)
+      if (s.phase==='broadside' && s.r<21 && !s.piratesDeployed)
         this._deployPirates(s);
       s.fireCd -= dt;
       if (s.fireCd<=0 && s.phase==='broadside' && friends.length) {
@@ -710,9 +712,11 @@ Object.assign(game, {
     this.notify(`+${v} ${icons[k]}`);
     const key = `${gx},${gz}`;
     if (this.resMeshes[key]) { this.scene.remove(this.resMeshes[key]); delete this.resMeshes[key]; }
+    const origType = ct;
     this.grid[gz][gx] = CT.LAND;
     const [r,g,b] = ctColor(CT.LAND, this.heights[gz][gx]);
     this._setCellColor(gx, gz, r, g, b);
+    this.harvestedCells.push({ gx, gz, origType, timer: 45 });
     this._checkObjectives();
   },
 
@@ -919,6 +923,23 @@ Object.assign(game, {
     });
   },
 
+  _respawnResource(gx, gz, type) {
+    if (this.grid[gz][gx] !== CT.LAND) return;
+    this.grid[gz][gx] = type;
+    const [r,g,b] = ctColor(type, this.heights[gz][gx]);
+    this._setCellColor(gx, gz, r, g, b);
+    let obj = null;
+    if      (type===CT.FOREST)  obj = mkTree(0.88+Math.random()*0.24);
+    else if (type===CT.ROCK)    obj = mkRock(0.82+Math.random()*0.22);
+    else if (type===CT.CRYSTAL) obj = mkCrystal(0.88+Math.random()*0.2);
+    if (obj) {
+      const {x,z} = cellWorld(gx, gz);
+      obj.position.set(x+(Math.random()-.5)*.28, this.heights[gz][gx], z+(Math.random()-.5)*.28);
+      this.scene.add(obj);
+      this.resMeshes[`${gx},${gz}`] = obj;
+    }
+  },
+
   _showVictory() {
     this.phase = 'victory';
     document.getElementById('end-title').textContent = '⚓ Victory! ⚓';
@@ -961,17 +982,27 @@ Object.assign(game, {
       this._updateCam();
     }
 
-    // Animate ocean
+    // Animate ocean — attenuate waves near island so they never flood it
     if (this._oceanBase) {
       const t = performance.now() * 0.001;
       const pos = this.oceanMesh.geometry.attributes.position.array;
       for (let i=0; i<this._oceanBase.length; i+=3) {
-        pos[i+1] = Math.sin(this._oceanBase[i]*0.15+t)*0.18
-                 + Math.cos(this._oceanBase[i+2]*0.12+t*0.78)*0.14;
+        const ox = this._oceanBase[i], oz = this._oceanBase[i+2];
+        const od = Math.sqrt(ox*ox + oz*oz);
+        const atten = Math.min(1, Math.max(0, (od - 22) / 14));
+        pos[i+1] = (Math.sin(ox*0.15+t)*0.28 + Math.cos(oz*0.12+t*0.78)*0.2) * atten - 0.6;
       }
       this.oceanMesh.geometry.attributes.position.needsUpdate = true;
       this.oceanMesh.geometry.computeVertexNormals();
     }
+
+    // Resource regeneration
+    for (const hc of this.harvestedCells) {
+      hc.timer -= dt;
+      if (hc.timer <= 0 && this.grid[hc.gz][hc.gx] === CT.LAND)
+        this._respawnResource(hc.gx, hc.gz, hc.origType);
+    }
+    this.harvestedCells = this.harvestedCells.filter(hc => hc.timer > 0);
 
     // Spell cooldowns
     for (const k of Object.keys(this.spellCds))
