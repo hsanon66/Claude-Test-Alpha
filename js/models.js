@@ -53,7 +53,7 @@ function mkWizardTower(){
   const g=new THREE.Group();
   const sm=mat(0x8B8070); const dm=mat(0x1A1040); const pm=mat(0x9B59B6,0x6B1F8A,.9);
   // shaft
-  g.add( Object.assign(mesh(cyl(.52,.68,2.0,8),sm), {position:{y:1.0,x:0,z:0}}) );
+  const shaft=mesh(cyl(.52,.68,2.0,8),sm); shaft.position.y=1.0; g.add(shaft);
   // battlement ring
   const br=mesh(cyl(.64,.64,.28,8),sm); br.position.y=2.14; g.add(br);
   // merlons

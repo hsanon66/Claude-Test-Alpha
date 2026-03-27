@@ -12,8 +12,8 @@ const ISLAND_R = 8.3;
 const CT = { WATER:0, LAND:1, BEACH:2, FOREST:3, ROCK:4, CRYSTAL:5, BUILDING:6 };
 
 const BDEF = {
-  wizard_tower:  { name:'Wizard Tower',  hp:120, cost:{wood:30,stone:20},        dmg:18, range:8,   fireRate:1.2, proj:'magic'  },
-  cannon_tower:  { name:'Cannon Tower',  hp:160, cost:{wood:20,stone:40},        dmg:40, range:6,   fireRate:0.4, proj:'cannon' },
+  wizard_tower:  { name:'Wizard Tower',  hp:120, cost:{wood:30,stone:20},        dmg:22, range:22,  fireRate:1.8, proj:'magic'  },
+  cannon_tower:  { name:'Cannon Tower',  hp:160, cost:{wood:20,stone:40},        dmg:55, range:18,  fireRate:0.55,proj:'cannon' },
   wall:          { name:'Stone Wall',    hp:350, cost:{stone:15},                dmg:0,  range:0,   fireRate:0,   proj:null     },
   barracks:      { name:'Barracks',      hp:80,  cost:{wood:40,stone:20},        dmg:0,  range:0,   fireRate:0,   proj:null     },
   shipyard:      { name:'Shipyard',      hp:80,  cost:{wood:60,stone:20},        dmg:0,  range:0,   fireRate:0,   proj:null     },
@@ -40,7 +40,7 @@ function rng(a,b){ return a + Math.random()*(b-a); }
 function ctColor(type, h) {
   switch(type){
     case CT.BEACH:    return [0.92, 0.82, 0.58];
-    case CT.LAND:     return [0.28+h*.06, 0.62+h*.06, 0.20+h*.04];
+    case CT.LAND:     return [0.18+h*.04, 0.70+h*.08, 0.12+h*.03];
     case CT.FOREST:   return [0.10+h*.04, 0.44+h*.05, 0.10+h*.03];
     case CT.ROCK:     return [0.50+h*.04, 0.46+h*.04, 0.40+h*.03];
     case CT.CRYSTAL:  return [0.45+h*.03, 0.20+h*.02, 0.75+h*.04];
@@ -107,14 +107,14 @@ const game = {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.renderer.setClearColor(0x080c18);
+    this.renderer.setClearColor(0x1a6aaa);
 
     this.camera = new THREE.PerspectiveCamera(55, window.innerWidth/window.innerHeight, 0.5, 300);
     this.camTarget = new THREE.Vector3(0,0,0);
     this._updateCam();
 
     this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.Fog(0x0a1828, 48, 145);
+    this.scene.fog = new THREE.Fog(0x1a6aaa, 60, 165);
 
     // Lights
     this.scene.add(new THREE.AmbientLight(0x334466, 0.75));
@@ -183,12 +183,44 @@ const game = {
       new THREE.MeshLambertMaterial({ color:0x1a7acc, transparent:true, opacity:0.92 }));
     this.oceanMesh.receiveShadow = true;
     this.scene.add(this.oceanMesh);
-    // Sea floor disc filling the gap between island base and ocean ring
-    const floor = new THREE.Mesh(
-      new THREE.CylinderGeometry(22, 22, 0.4, 48),
-      new THREE.MeshLambertMaterial({ color:0x0a3a5c })
+    // Gap-fill shallow water between island edge and ocean ring
+    const shallowVerts = [], shallowIdx = [];
+    const shInner = 16.5, shOuter = 20, shSegs = 48;
+    for (let r2 = 0; r2 <= 1; r2++) {
+      const rad = r2 === 0 ? shInner : shOuter;
+      for (let s = 0; s <= shSegs; s++) {
+        const a = (s/shSegs)*Math.PI*2;
+        shallowVerts.push(Math.cos(a)*rad, -0.08, Math.sin(a)*rad);
+      }
+    }
+    for (let s = 0; s < shSegs; s++) {
+      const a = s, b = a+1, c = a+shSegs+1, d = c+1;
+      shallowIdx.push(a,c,b, b,c,d);
+    }
+    const shGeo = new THREE.BufferGeometry();
+    shGeo.setAttribute('position', new THREE.Float32BufferAttribute(shallowVerts,3));
+    shGeo.setIndex(shallowIdx);
+    shGeo.computeVertexNormals();
+    const shallow = new THREE.Mesh(shGeo,
+      new THREE.MeshLambertMaterial({ color:0x2a9ad8, transparent:true, opacity:0.88 }));
+    this.scene.add(shallow);
+
+    // Shore foam ring — slowly rotating, gives wave-hit-island feel
+    const foam = new THREE.Mesh(
+      new THREE.TorusGeometry(17.2, 0.55, 6, 56),
+      new THREE.MeshBasicMaterial({ color:0xeef8ff, transparent:true, opacity:0.45, depthWrite:false })
     );
-    floor.position.y = -1.15;
+    foam.rotation.x = Math.PI/2;
+    foam.position.y = 0.06;
+    this.scene.add(foam);
+    this._foamMesh = foam;
+
+    // Sea floor disc — hidden under island and shallow ring
+    const floor = new THREE.Mesh(
+      new THREE.CylinderGeometry(16.5, 16.5, 0.3, 48),
+      new THREE.MeshLambertMaterial({ color:0x1a5580 })
+    );
+    floor.position.y = -1.1;
     this.scene.add(floor);
   },
 
@@ -405,6 +437,22 @@ class Unit {
   }
   update(dt, targets, scene, projectiles) {
     if (!this.alive) return;
+
+    // Boarding phase: walk from ship to shore before fighting
+    if (this.boarding && this.boardTarget) {
+      const dx = this.boardTarget.x - this.x, dz = this.boardTarget.z - this.z;
+      const dist = Math.sqrt(dx*dx + dz*dz);
+      if (dist < 0.8) {
+        this.boarding = false;
+      } else {
+        const s = 3.5 * dt; // swim/row speed
+        this.x += (dx/dist)*s; this.z += (dz/dist)*s;
+        this.mesh.position.set(this.x, 0, this.z);
+        this.mesh.rotation.y = Math.atan2(dx, dz);
+      }
+      return;
+    }
+
     this.fireCd -= dt;
     let best = null, bd = Infinity;
     for (const t of targets) {
@@ -414,7 +462,16 @@ class Unit {
     }
     if (!best) return;
     if (bd > this.range) {
-      const s = this.speed * dt;
+      // Check wall slow: enemy units near a wall move at 40% speed
+      let spd = this.speed;
+      if (this.enemy && game.buildings) {
+        for (const b of game.buildings) {
+          if (b.type === 'wall' && b.alive && d2(this.x, this.z, b.x, b.z) < 2.5) {
+            spd *= 0.4; break;
+          }
+        }
+      }
+      const s = spd * dt;
       const dx = best.x - this.x, dz = best.z - this.z;
       const m = Math.sqrt(dx*dx + dz*dz);
       this.x += (dx/m)*s; this.z += (dz/m)*s;
@@ -470,7 +527,8 @@ class Ship {
       const cur = this.r, newR = cur + (tR - cur)*dt*0.9;
       this.x = Math.sin(this.angle)*newR;
       this.z = Math.cos(this.angle)*newR;
-      this.mesh.position.set(this.x, 0, this.z);
+      const bob = Math.sin(this.angle * 4 + (game._t||0) * 1.2) * 0.12;
+      this.mesh.position.set(this.x, bob, this.z);
       this.mesh.rotation.y = this.angle + Math.PI/2;
     }
   }
@@ -587,10 +645,18 @@ Object.assign(game, {
     if (ship.piratesDeployed) return;
     ship.piratesDeployed = true;
     for (let i=0; i<ship.piratesToDeploy; i++) {
-      const a = Math.random()*Math.PI*2, r2 = 9+Math.random()*2;
-      this.units.push(new Unit('pirate', Math.cos(a)*r2, Math.sin(a)*r2, this.scene, true));
+      const offset = (Math.random()-0.5)*2.5;
+      const px = ship.x + Math.cos(ship.angle+Math.PI/2)*offset;
+      const pz = ship.z + Math.sin(ship.angle+Math.PI/2)*offset;
+      // Shore landing target: random point on beach ring radius 13-15
+      const landA = Math.atan2(ship.x, ship.z) + (Math.random()-0.5)*0.8;
+      const landR = 13 + Math.random()*2;
+      const u = new Unit('pirate', px, pz, this.scene, true);
+      u.boardTarget = { x: Math.sin(landA)*landR, z: Math.cos(landA)*landR };
+      u.boarding = true;
+      this.units.push(u);
     }
-    this.notify('⚠ Pirates landing!');
+    this.notify('⚠ Pirates boarding!');
   },
 
   _launchWave() {
@@ -1012,17 +1078,27 @@ Object.assign(game, {
       this._updateCam();
     }
 
+    // Accumulate time for bobbing etc.
+    this._t = (this._t || 0) + dt;
+    const t = this._t;
+
     // Animate ocean ring — safe to wave freely, ring never covers island
     if (this._oceanBase) {
-      const t = performance.now() * 0.001;
       const pos = this.oceanMesh.geometry.attributes.position.array;
       for (let i=0; i<this._oceanBase.length; i+=3) {
         const ox = this._oceanBase[i], oz = this._oceanBase[i+2];
-        pos[i+1] = Math.sin(ox*0.1+t)*0.26 + Math.cos(oz*0.08+t*0.72)*0.18;
+        pos[i+1] = Math.sin(ox*0.09+t)*0.22 + Math.cos(oz*0.07+t*0.65)*0.16;
       }
       this.oceanMesh.geometry.attributes.position.needsUpdate = true;
       this.oceanMesh.geometry.computeVertexNormals();
     }
+
+    // Rotate shore foam ring
+    if (this._foamMesh) this._foamMesh.rotation.z = t * 0.12;
+
+    // Passive gold income: +5 every 10 seconds
+    this._goldTimer = (this._goldTimer || 0) + dt;
+    if (this._goldTimer >= 10) { this._goldTimer -= 10; this.res.gold += 5; }
 
     // Resource regeneration
     for (const hc of this.harvestedCells) {
