@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Crystal Archipelago – The Wizard's Stand</title>
+  <title>Crystal Archipelago 2.0</title>
   <style>
     *{margin:0;padding:0;box-sizing:border-box;}
     body{background:#0a0a1a;overflow:hidden;font-family:'Georgia',serif;}
@@ -37,7 +37,7 @@
       position:absolute;left:10px;top:50%;transform:translateY(-50%);
       background:rgba(8,4,18,.93);border:2px solid #5a3a10;
       border-radius:10px;padding:10px 8px;pointer-events:auto;display:none;
-      min-width:152px;
+      min-width:158px;max-height:80vh;overflow-y:auto;
     }
     #build-menu h3{color:#ffd700;text-align:center;margin-bottom:8px;font-size:13px;letter-spacing:1px;}
     .bb{
@@ -50,6 +50,7 @@
     .bb.sel{background:rgba(100,60,5,1);border-color:#ffd700;}
     .bb.off{opacity:.45;cursor:not-allowed;}
     .bc{font-size:10px;color:#888;margin-top:1px;}
+    .bb.locked{opacity:.3;cursor:not-allowed;}
 
     /* ── Info Panels ── */
     .panel{
@@ -58,16 +59,17 @@
       padding:11px;color:#e0d0b8;pointer-events:auto;
     }
     .panel h3{font-size:13px;margin-bottom:7px;}
-    #wave-panel{right:10px;top:55px;min-width:175px;}
+    #wave-panel{right:10px;top:55px;min-width:180px;}
     #wave-panel h3{color:#ff6644;}
     #wave-timer{font-size:26px;color:#ff6644;text-align:center;font-weight:bold;}
     #wave-desc{font-size:11px;color:#998;margin-top:4px;}
-    #obj-panel{right:10px;top:220px;min-width:175px;}
+    #wave-manifest{font-size:10px;color:#aa8866;margin-top:5px;line-height:1.6;}
+    #obj-panel{right:10px;top:240px;min-width:180px;}
     #obj-panel h3{color:#ffd700;}
     .obj{font-size:11px;color:#998;margin:3px 0;}
     .obj.done{color:#44ff88;text-decoration:line-through;}
     .obj::before{content:'◆ ';}
-    #islands-panel{right:10px;bottom:10px;min-width:165px;}
+    #islands-panel{right:10px;bottom:82px;min-width:165px;}
     #islands-panel h3{color:#ffd700;}
     .isl{font-size:11px;margin:3px 0;}
     .isl.friendly{color:#44ff88;}
@@ -89,6 +91,7 @@
     }
     .sb:hover{border-color:#ffd700;transform:translateY(-3px);}
     .sb span{font-size:10px;color:#aaa;}
+    .sb.locked-spell{opacity:.35;cursor:not-allowed;}
     .scd{
       position:absolute;bottom:0;left:0;right:0;
       background:rgba(0,0,0,.65);pointer-events:none;
@@ -142,6 +145,7 @@
     }
     #chap-title h2{font-size:38px;color:#ffd700;text-shadow:0 0 25px #ff8800,0 0 50px #ff4400;}
     #chap-title h3{font-size:20px;color:#9b7ac8;margin-top:6px;letter-spacing:1px;}
+    #chap-title .act-badge{font-size:13px;color:#5a8aaa;letter-spacing:2px;margin-top:3px;}
 
     /* ── Title Screen ── */
     #title-screen{
@@ -153,9 +157,19 @@
     #title-screen h1{
       font-size:52px;color:#ffd700;
       text-shadow:0 0 20px #ff8800,0 0 50px #ff4400;
-      margin-bottom:8px;letter-spacing:3px;
+      margin-bottom:4px;letter-spacing:3px;
     }
-    #title-screen h2{font-size:19px;color:#9b7ac8;margin-bottom:40px;letter-spacing:2px;}
+    #title-screen h2{font-size:19px;color:#9b7ac8;margin-bottom:8px;letter-spacing:2px;}
+    .version-badge{font-size:12px;color:#55aacc;letter-spacing:3px;margin-bottom:32px;}
+    .diff-label{font-size:13px;color:#888;margin-bottom:10px;letter-spacing:1px;}
+    #diff-btns{display:flex;gap:10px;margin-bottom:32px;}
+    .diff-btn{
+      padding:8px 22px;font-size:14px;cursor:pointer;
+      border-radius:18px;font-family:'Georgia',serif;transition:all .2s;
+      border:2px solid #444;background:rgba(20,10,3,.8);color:#aaa;
+    }
+    .diff-btn:hover{border-color:#aaa;color:#ddd;}
+    .diff-btn.sel{border-color:#ffd700;color:#ffd700;background:rgba(60,40,5,.9);}
     #start-btn{
       padding:14px 52px;font-size:20px;cursor:pointer;
       background:linear-gradient(135deg,#3a1e00,#7a5a10);
@@ -170,26 +184,120 @@
     }
     .title-hint{font-size:13px;color:#555;margin-top:30px;line-height:1.8;text-align:center;}
 
+    /* ── Chapter Complete Overlay ── */
+    #chap-complete{
+      position:absolute;inset:0;background:rgba(0,0,0,.88);
+      display:none;flex-direction:column;align-items:center;justify-content:center;
+      z-index:90;pointer-events:auto;
+    }
+    #cc-act{font-size:12px;color:#55aacc;letter-spacing:3px;margin-bottom:6px;}
+    #cc-title{font-size:38px;color:#ffd700;text-shadow:0 0 20px #ff8800;margin-bottom:8px;}
+    #cc-sub{font-size:16px;color:#9b7ac8;margin-bottom:20px;}
+    #cc-stars{font-size:44px;margin-bottom:18px;letter-spacing:8px;}
+    #cc-score{font-size:13px;color:#a09070;margin-bottom:22px;line-height:1.8;text-align:center;}
+    #cc-bonus{font-size:13px;color:#88ff88;margin-bottom:28px;}
+    #cc-boons{display:flex;gap:14px;margin-bottom:28px;}
+    .boon-card{
+      width:165px;padding:14px 12px;border-radius:10px;cursor:pointer;
+      border:2px solid #5a3a10;background:rgba(15,8,3,.95);
+      text-align:center;transition:all .2s;
+    }
+    .boon-card:hover{border-color:#ffd700;transform:translateY(-4px);box-shadow:0 0 18px rgba(255,200,0,.25);}
+    .boon-card.picked{border-color:#44ff88;background:rgba(5,20,5,.95);}
+    .boon-icon{font-size:28px;margin-bottom:6px;}
+    .boon-name{font-size:13px;color:#ffd700;font-weight:bold;margin-bottom:4px;}
+    .boon-desc{font-size:11px;color:#998;line-height:1.4;}
+    #cc-next{
+      padding:11px 42px;font-size:16px;cursor:pointer;display:none;
+      background:rgba(50,30,5,.8);border:2px solid #ffd700;
+      border-radius:22px;color:#ffd700;font-family:'Georgia',serif;
+    }
+    #cc-next:hover{background:rgba(100,60,5,.9);}
+
+    /* ── Upgrade Panel ── */
+    #upgrade-panel{
+      position:absolute;left:175px;top:50%;transform:translateY(-50%);
+      background:rgba(8,4,18,.97);border:2px solid #8855cc;
+      border-radius:10px;padding:12px;min-width:210px;
+      display:none;pointer-events:auto;z-index:40;
+    }
+    #upgrade-panel h3{color:#cc88ff;font-size:13px;margin-bottom:8px;text-align:center;}
+    #upgrade-panel .up-name{font-size:12px;color:#ffd700;margin-bottom:8px;text-align:center;}
+    #upgrade-panel .up-hp{font-size:11px;color:#44ff88;margin-bottom:8px;text-align:center;}
+    .upg-btn{
+      display:block;width:100%;padding:7px 9px;margin:3px 0;
+      background:rgba(40,20,60,.8);border:1px solid #6a40aa;
+      border-radius:5px;color:#e0c8f8;cursor:pointer;
+      font-family:inherit;font-size:11px;text-align:left;transition:background .15s;
+    }
+    .upg-btn:hover{background:rgba(80,40,120,.9);}
+    .upg-btn.maxed{opacity:.4;cursor:not-allowed;}
+    .upg-btn .upg-level{float:right;color:#888;}
+    #upgrade-close{
+      display:block;width:100%;margin-top:6px;padding:5px;
+      background:rgba(40,10,10,.8);border:1px solid #aa4444;
+      border-radius:5px;color:#ff8888;cursor:pointer;
+      font-family:inherit;font-size:11px;text-align:center;
+    }
+
+    /* ── Relic Panel ── */
+    #relic-panel{
+      position:absolute;left:10px;bottom:82px;min-width:150px;
+      background:rgba(8,4,18,.93);border:2px solid #5a3a10;
+      border-radius:10px;padding:10px;pointer-events:none;display:none;
+    }
+    #relic-panel h3{font-size:12px;color:#cc88ff;margin-bottom:6px;}
+    .relic-item{font-size:11px;color:#bb88ee;margin:3px 0;}
+
+    /* ── Wave Incoming ── */
+    #wave-incoming{
+      position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+      text-align:center;pointer-events:none;display:none;z-index:50;
+    }
+    #wave-incoming h2{font-size:42px;color:#ff4400;text-shadow:0 0 30px #ff2200;animation:pulse .6s infinite alternate;}
+    @keyframes pulse{from{opacity:.7;transform:scale(.97)}to{opacity:1;transform:scale(1.03)}}
+
+    /* ── Act Banner ── */
+    #act-banner{
+      position:absolute;top:0;left:0;right:0;text-align:center;
+      font-size:11px;letter-spacing:2px;color:#55aacc;
+      padding:3px;background:rgba(0,0,0,.4);pointer-events:none;
+    }
+
     /* ── End Screen ── */
     #end-screen{
-      position:absolute;inset:0;background:rgba(0,0,0,.85);
+      position:absolute;inset:0;background:rgba(0,0,0,.88);
       display:none;flex-direction:column;align-items:center;justify-content:center;
       z-index:100;pointer-events:auto;
     }
     #end-screen h2{font-size:50px;color:#ffd700;margin-bottom:16px;}
     #end-screen p{font-size:17px;color:#f0e6c8;margin-bottom:30px;text-align:center;max-width:520px;line-height:1.6;}
-    #restart-btn{
+    #end-restart{
       padding:11px 40px;font-size:17px;cursor:pointer;
       background:rgba(50,30,5,.8);border:2px solid #ffd700;
-      border-radius:22px;color:#ffd700;font-family:'Georgia',serif;
+      border-radius:22px;color:#ffd700;font-family:'Georgia',serif;margin:6px;
     }
-    #restart-btn:hover{background:rgba(100,60,5,.9);}
+    #end-restart:hover{background:rgba(100,60,5,.9);}
+    #end-endless{
+      padding:9px 32px;font-size:14px;cursor:pointer;
+      background:rgba(5,30,50,.8);border:2px solid #44aaff;
+      border-radius:22px;color:#44aaff;font-family:'Georgia',serif;margin:6px;display:none;
+    }
+    #end-endless:hover{background:rgba(10,60,100,.9);}
 
     /* ── Controls Hint ── */
     #ctrl-hint{
       position:absolute;bottom:88px;right:12px;
       color:#444;font-size:11px;text-align:right;
       pointer-events:none;line-height:1.7;
+    }
+
+    /* ── Endless Banner ── */
+    #endless-banner{
+      position:absolute;top:10px;left:10px;
+      background:rgba(0,20,40,.9);border:1px solid #44aaff;
+      border-radius:8px;padding:5px 12px;color:#44aaff;font-size:12px;
+      pointer-events:none;display:none;
     }
   </style>
 </head>
@@ -199,54 +307,73 @@
 <!-- ══ UI OVERLAY ══ -->
 <div id="ui">
 
+  <!-- Act Banner -->
+  <div id="act-banner">ACT 1 — THE CORSAIR WAR</div>
+
   <!-- Title Screen -->
   <div id="title-screen">
     <h1>⚓ Crystal Archipelago ⚓</h1>
     <h2>The Wizard's Stand</h2>
+    <div class="version-badge">VERSION 2.0</div>
+    <div class="diff-label">SELECT DIFFICULTY</div>
+    <div id="diff-btns">
+      <button class="diff-btn" onclick="game.setDifficulty('easy')">🌊 Easy</button>
+      <button class="diff-btn sel" onclick="game.setDifficulty('normal')">⚔ Normal</button>
+      <button class="diff-btn" onclick="game.setDifficulty('hard')">💀 Hard</button>
+    </div>
     <button id="start-btn" onclick="game.startGame()">Begin Your Quest</button>
     <div class="title-hint">
       WASD / Arrow Keys — Move Camera &nbsp;|&nbsp; Scroll — Zoom<br>
-      Click Island — Harvest Resources &nbsp;|&nbsp; Build Mode — Place Defenses<br>
-      Spells — Click Spell Buttons &nbsp;|&nbsp; Survive 5 Chapters to Win!
+      Click Island — Harvest Resources &nbsp;|&nbsp; Build Mode — Place &amp; Upgrade Defenses<br>
+      Survive 15 Chapters across 3 Acts to save the Crystal Archipelago
     </div>
   </div>
 
   <!-- Resource Bar -->
   <div id="res-bar">
-    <div class="ri"><span class="icon">🪵</span><span id="r-wood">50</span></div>
-    <div class="ri"><span class="icon">🪨</span><span id="r-stone">30</span></div>
-    <div class="ri"><span class="icon">💎</span><span id="r-crystal">10</span></div>
-    <div class="ri"><span class="icon">🪙</span><span id="r-gold">100</span></div>
+    <div class="ri"><span class="icon">🪵</span><span id="r-wood">0</span></div>
+    <div class="ri"><span class="icon">🪨</span><span id="r-stone">0</span></div>
+    <div class="ri"><span class="icon">💎</span><span id="r-crystal">0</span></div>
+    <div class="ri"><span class="icon">🪙</span><span id="r-gold">0</span></div>
   </div>
 
   <!-- Mode Buttons -->
   <div id="mode-bar">
     <button class="mb active" id="btn-harvest" onclick="game.setMode('harvest')">⛏ Harvest</button>
-    <button class="mb" id="btn-build"   onclick="game.setMode('build')">🏗 Build</button>
-    <button class="mb" id="btn-train"   onclick="game.setMode('train')">⚔ Train</button>
-    <button class="mb" id="btn-sail"    onclick="game.setMode('sail')">⛵ Sail</button>
+    <button class="mb"        id="btn-build"   onclick="game.setMode('build')">🏗 Build</button>
+    <button class="mb"        id="btn-train"   onclick="game.setMode('train')">⚔ Train</button>
+    <button class="mb"        id="btn-sail"    onclick="game.setMode('sail')">⛵ Sail</button>
   </div>
 
   <!-- Build Menu -->
   <div id="build-menu">
     <h3>⚒ Buildings</h3>
-    <button class="bb" data-b="wizard_tower"  onclick="game.selectBuilding('wizard_tower')">
+    <button class="bb" data-b="wizard_tower"   onclick="game.selectBuilding('wizard_tower')">
       🔮 Wizard Tower<div class="bc">30🪵 20🪨</div>
     </button>
-    <button class="bb" data-b="cannon_tower"  onclick="game.selectBuilding('cannon_tower')">
+    <button class="bb" data-b="cannon_tower"   onclick="game.selectBuilding('cannon_tower')">
       💣 Cannon Tower<div class="bc">20🪵 40🪨</div>
     </button>
-    <button class="bb" data-b="wall"          onclick="game.selectBuilding('wall')">
+    <button class="bb" data-b="wall"           onclick="game.selectBuilding('wall')">
       🧱 Stone Wall<div class="bc">15🪨</div>
     </button>
-    <button class="bb" data-b="barracks"      onclick="game.selectBuilding('barracks')">
+    <button class="bb" data-b="barracks"       onclick="game.selectBuilding('barracks')">
       ⚔ Barracks<div class="bc">40🪵 20🪨</div>
     </button>
-    <button class="bb" data-b="shipyard"      onclick="game.selectBuilding('shipyard')">
+    <button class="bb" data-b="shipyard"       onclick="game.selectBuilding('shipyard')">
       ⚓ Shipyard<div class="bc">60🪵 20🪨</div>
     </button>
-    <button class="bb" data-b="crystal_forge" onclick="game.selectBuilding('crystal_forge')">
+    <button class="bb" data-b="crystal_forge"  onclick="game.selectBuilding('crystal_forge')">
       ✨ Crystal Forge<div class="bc">25🪨 20💎</div>
+    </button>
+    <button class="bb locked" id="bb-lighthouse" data-b="lighthouse" onclick="game.selectBuilding('lighthouse')">
+      🏮 Lighthouse<div class="bc">40🪵 20🪨</div>
+    </button>
+    <button class="bb locked" id="bb-harbor" data-b="harbor" onclick="game.selectBuilding('harbor')">
+      🚢 Harbor<div class="bc">50🪵 30🪨</div>
+    </button>
+    <button class="bb locked" id="bb-ballista_tower" data-b="ballista_tower" onclick="game.selectBuilding('ballista_tower')">
+      🏹 Ballista Tower<div class="bc">30🪵 15💎</div>
     </button>
   </div>
 
@@ -255,6 +382,7 @@
     <h3>⚓ Enemy Activity</h3>
     <div id="wave-timer">--:--</div>
     <div id="wave-desc">Scouting the seas...</div>
+    <div id="wave-manifest"></div>
   </div>
 
   <!-- Objectives -->
@@ -268,29 +396,43 @@
     <h3>🗺 Islands</h3>
     <div id="island-list">
       <div class="isl friendly">● Emerald Isle (Home)</div>
-      <div class="isl enemy"   id="isl-1">● Isle of Crimson</div>
-      <div class="isl enemy"   id="isl-2">● Skull Rock</div>
-      <div class="isl enemy"   id="isl-3">● Dread Citadel</div>
+      <div class="isl enemy"  id="isl-0">● Isle of Crimson</div>
+      <div class="isl enemy"  id="isl-1">● Skull Rock</div>
+      <div class="isl enemy"  id="isl-2">● Dread Citadel</div>
     </div>
+  </div>
+
+  <!-- Relic Panel -->
+  <div id="relic-panel">
+    <h3>✨ Relics</h3>
+    <div id="relic-list"></div>
   </div>
 
   <!-- Spell Bar -->
   <div id="spell-bar">
-    <button class="sb" id="sp-fireball" onclick="game.castSpell('fireball')" title="Fireball – Burns a group of enemies (cost: 5💎)">
+    <button class="sb" id="sp-fireball" onclick="game.castSpell('fireball')" title="Fireball – Burns a cluster of enemies (5💎)">
       🔥<span>Fireball</span>
       <div class="scd" id="cd-fireball" style="height:0"></div>
     </button>
-    <button class="sb" id="sp-shield" onclick="game.castSpell('shield')" title="Magic Shield – Protects buildings (cost: 3💎)">
+    <button class="sb" id="sp-shield" onclick="game.castSpell('shield')" title="Shield – Protects all buildings (3💎)">
       🛡️<span>Shield</span>
       <div class="scd" id="cd-shield" style="height:0"></div>
     </button>
-    <button class="sb" id="sp-storm" onclick="game.castSpell('storm')" title="Lightning Storm – Strikes all ships (cost: 10💎)">
+    <button class="sb" id="sp-storm" onclick="game.castSpell('storm')" title="Lightning Storm – Strikes all ships (10💎)">
       ⚡<span>Storm</span>
       <div class="scd" id="cd-storm" style="height:0"></div>
     </button>
-    <button class="sb" id="sp-summon" onclick="game.castSpell('summon')" title="Summon Golem – A stone defender (cost: 8💎)">
+    <button class="sb" id="sp-summon" onclick="game.castSpell('summon')" title="Summon Golem – Stone defender (8💎)">
       🗿<span>Golem</span>
       <div class="scd" id="cd-summon" style="height:0"></div>
+    </button>
+    <button class="sb locked-spell" id="sp-tidal" onclick="game.castSpell('tidal')" title="Tidal Wave – Pushes all ships back (12💎) — Unlocks Act 2">
+      🌊<span>Tidal</span>
+      <div class="scd" id="cd-tidal" style="height:0"></div>
+    </button>
+    <button class="sb locked-spell" id="sp-chain" onclick="game.castSpell('chain')" title="Chain Lightning – Bounces between 4 enemies (8💎) — Unlocks Act 2">
+      ⚡🔗<span>Chain</span>
+      <div class="scd" id="cd-chain" style="height:0"></div>
     </button>
   </div>
 
@@ -309,22 +451,53 @@
 
   <!-- Chapter Title -->
   <div id="chap-title">
+    <div class="act-badge" id="ct-act"></div>
     <h2 id="ct-ch"></h2>
     <h3 id="ct-ti"></h3>
   </div>
 
+  <!-- Wave Incoming Flash -->
+  <div id="wave-incoming"><h2>⚠ INCOMING! ⚠</h2></div>
+
+  <!-- Chapter Complete Overlay -->
+  <div id="chap-complete">
+    <div id="cc-act"></div>
+    <div id="cc-title"></div>
+    <div id="cc-sub"></div>
+    <div id="cc-stars"></div>
+    <div id="cc-score"></div>
+    <div id="cc-bonus"></div>
+    <div style="font-size:13px;color:#ffd700;margin-bottom:10px;display:none" id="cc-boon-label">⚡ Choose a Boon for your next chapter:</div>
+    <div id="cc-boons"></div>
+    <button id="cc-next" onclick="game._advanceChapter()">Continue →</button>
+  </div>
+
+  <!-- Upgrade Panel -->
+  <div id="upgrade-panel">
+    <h3>⚒ Upgrade Building</h3>
+    <div class="up-name" id="up-name"></div>
+    <div class="up-hp" id="up-hp"></div>
+    <div id="up-buttons"></div>
+    <button class="upgrade-close" id="upgrade-close" onclick="game._closeUpgrade()">✕ Close</button>
+  </div>
+
+  <!-- Endless Banner -->
+  <div id="endless-banner">🌊 ENDLESS MODE — Wave <span id="endless-wave">1</span></div>
+
   <!-- End Screen -->
   <div id="end-screen">
-    <h2 id="end-title">Victory!</h2>
+    <h2 id="end-title"></h2>
     <p  id="end-text"></p>
-    <button id="restart-btn" onclick="location.reload()">Play Again</button>
+    <button id="end-restart" onclick="location.reload()">Play Again</button>
+    <button id="end-endless" onclick="game._startEndless()">🌊 Endless Mode</button>
   </div>
 
   <!-- Controls hint -->
   <div id="ctrl-hint">
     WASD: Camera &nbsp;|&nbsp; Scroll: Zoom<br>
-    Click: Interact
+    Build Mode: Click building → Upgrade
   </div>
+
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>

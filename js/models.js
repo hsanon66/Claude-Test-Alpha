@@ -131,6 +131,139 @@ function mkCrystalForge(){
   return g;
 }
 
+function mkLighthouse(){
+  const g=new THREE.Group();
+  // base
+  const base=mesh(cyl(0.4,0.6,0.8,8),mat(0xDDDDCC)); base.position.y=0.4; g.add(base);
+  // tower shaft
+  const shaft=mesh(cyl(0.28,0.38,3.0,8),mat(0xF5F5EE)); shaft.position.y=2.2; g.add(shaft);
+  // lamp room
+  const lamp=mesh(cyl(0.42,0.42,0.35,8),mat(0x888866)); lamp.position.y=3.55; g.add(lamp);
+  // glass dome
+  const dome=mesh(sphere(0.3,8),mat(0xFFEE88,0xFFAA00,1.2)); dome.position.y=3.85; g.add(dome);
+  // beacon light
+  const bl=ptLight(0xFFDD44,1.4,35); bl.position.y=3.85; g.add(bl);
+  g._beaconLight=bl;
+  // railing ring
+  const rail=mesh(torus(0.44,0.04,6,14),mat(0x888866)); rail.position.y=3.38; rail.rotation.x=Math.PI/2; g.add(rail);
+  return g;
+}
+
+function mkHarbor(){
+  const g=new THREE.Group();
+  // main building
+  const main=mesh(box(2.0,1.1,1.5),mat(0x7B5A2A)); main.position.y=0.55; g.add(main);
+  // blue roof
+  const roof=mesh(cone(1.4,0.7,4),mat(0x2255AA)); roof.rotation.y=Math.PI/4; roof.position.y=1.55; g.add(roof);
+  // dock platform
+  const dock=mesh(box(2.8,0.1,0.9),mat(0x3A2A10)); dock.position.set(0,0.05,1.2); g.add(dock);
+  // dock posts x4
+  const pm=mat(0x2A1A08);
+  const p1=mesh(cyl(0.06,0.06,0.7,5),pm); p1.position.set( 0.8,0.35,1.55); g.add(p1);
+  const p2=mesh(cyl(0.06,0.06,0.7,5),pm); p2.position.set(-0.8,0.35,1.55); g.add(p2);
+  const p3=mesh(cyl(0.06,0.06,0.7,5),pm); p3.position.set( 0.3,0.35,1.55); g.add(p3);
+  const p4=mesh(cyl(0.06,0.06,0.7,5),pm); p4.position.set(-0.3,0.35,1.55); g.add(p4);
+  // coin glow
+  const l=ptLight(0xFFDD00,0.5,4); l.position.y=1.2; g.add(l);
+  return g;
+}
+
+function mkBallista(){
+  const g=new THREE.Group();
+  // base
+  const base=mesh(cyl(0.55,0.72,1.4,8),mat(0x7A6A50)); base.position.y=0.7; g.add(base);
+  // pivot block
+  const pivot=mesh(box(0.7,0.35,0.7),mat(0x5A4A38)); pivot.position.y=1.57; g.add(pivot);
+  // bow left arm
+  const larm=mesh(cyl(0.05,0.05,1.1,5),mat(0x8B6914));
+  larm.rotation.z=Math.PI/6; larm.position.set(-0.48,1.7,0); g.add(larm);
+  // bow right arm
+  const rarm=mesh(cyl(0.05,0.05,1.1,5),mat(0x8B6914));
+  rarm.rotation.z=-Math.PI/6; rarm.position.set(0.48,1.7,0); g.add(rarm);
+  // stock
+  const stock=mesh(cyl(0.07,0.07,1.2,5),mat(0x6B4A14));
+  stock.rotation.z=Math.PI/2; stock.position.set(0.5,1.62,0); g.add(stock);
+  // bolt
+  const bolt=mesh(cyl(0.04,0.04,0.9,5),mat(0x2A1A08));
+  bolt.rotation.z=Math.PI/2; bolt.position.set(0.2,1.7,0); g.add(bolt);
+  // light
+  const l=ptLight(0x884400,0.4,4); l.position.y=1.7; g.add(l);
+  return g;
+}
+
+function mkGhostShip(enemy=true){
+  const g=new THREE.Group();
+  // hull — transparent
+  const hullMat=new THREE.MeshLambertMaterial({color:0xCCDDEE,emissive:0x4488BB,emissiveIntensity:0.6,transparent:true,opacity:0.55});
+  const hull=mesh(box(2.2,0.55,0.88),hullMat); hull.position.y=0.28; g.add(hull);
+  // mast
+  const mastMat=new THREE.MeshLambertMaterial({color:0xBBCCDD,emissive:0x3366AA,emissiveIntensity:0.4,transparent:true,opacity:1.0});
+  const mast=mesh(cyl(0.05,0.05,2.6,5),mastMat); mast.position.y=1.6; g.add(mast);
+  // sail
+  const sailMat=new THREE.MeshLambertMaterial({color:0xDDEEFF,emissive:0x6699CC,emissiveIntensity:0.5,transparent:true,opacity:0.5,side:THREE.DoubleSide});
+  const sail=mesh(plane(1.1,1.4),sailMat); sail.position.set(0,1.8,0); g.add(sail);
+  // ghostly glow
+  const l=ptLight(0x88AAFF,0.8,6); l.position.y=1.0; g.add(l);
+  g.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
+  return g;
+}
+
+function mkBombSloop(enemy=true){
+  const g=new THREE.Group();
+  // hull
+  const hull=mesh(box(1.6,0.45,0.68),mat(0xAA2200)); hull.position.y=0.23; g.add(hull);
+  // deck trim
+  const trim=mesh(box(1.7,0.08,0.75),mat(0x881800)); trim.position.y=0.5; g.add(trim);
+  // mast
+  const mast=mesh(cyl(0.05,0.05,1.8,5),mat(0x442200)); mast.position.y=1.2; g.add(mast);
+  // skull flag
+  const flagMat=new THREE.MeshLambertMaterial({color:0xFF0000,emissive:0xCC0000,emissiveIntensity:0.8,side:THREE.DoubleSide});
+  const flag=mesh(plane(0.4,0.28),flagMat); flag.position.set(0,2.15,0); g.add(flag);
+  // barrel
+  const barrel=mesh(cyl(0.22,0.22,0.38,8),mat(0x3A2A10)); barrel.position.set(0.3,0.6,0); g.add(barrel);
+  // fuse — slightly angled
+  const fuseMat=mat(0xFF6600,0xFF3300,1.5);
+  const fuse=mesh(cyl(0.02,0.02,0.4,4),fuseMat);
+  fuse.rotation.z=0.2; fuse.position.set(0.3,0.82,0); g.add(fuse);
+  // red glow
+  const l=ptLight(0xFF3300,0.7,5); l.position.y=0.6; g.add(l);
+  g.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
+  return g;
+}
+
+function mkUndeadGalleon(enemy=true){
+  const g=new THREE.Group();
+  // hull
+  const hull=mesh(box(3.8,0.9,1.4),mat(0x1A2410,0x002200,0.3)); hull.position.y=0.45; g.add(hull);
+  // top deck
+  const deck=mesh(box(3.5,0.15,1.3),mat(0x0F1A0C)); deck.position.y=0.95; g.add(deck);
+  // fore castle
+  const fore=mesh(box(1.0,0.7,1.2),mat(0x1A2410)); fore.position.set(-1.5,1.3,0); g.add(fore);
+  // aft castle
+  const aft=mesh(box(1.1,0.8,1.2),mat(0x1A2410)); aft.position.set(1.5,1.35,0); g.add(aft);
+  // mast 1
+  const m1=mesh(cyl(0.1,0.1,3.8,6),mat(0x0A0F08)); m1.position.set(0.5,2.85,0); g.add(m1);
+  // mast 2
+  const m2=mesh(cyl(0.08,0.08,3.2,6),mat(0x0A0F08)); m2.position.set(-0.8,2.55,0); g.add(m2);
+  // void sail
+  const sailMat=new THREE.MeshLambertMaterial({color:0x001a00,emissive:0x00AA44,emissiveIntensity:0.7,transparent:true,opacity:0.85,side:THREE.DoubleSide});
+  const sail=mesh(plane(1.8,2.0),sailMat); sail.position.set(0.5,2.8,0); g.add(sail);
+  // void crystal on bow
+  const crystal=mesh(oct(0.28),mat(0x00FF88,0x00BB44,2.0)); crystal.position.set(-2.1,1.1,0); g.add(crystal);
+  // green glow
+  const l=ptLight(0x00FF44,1.2,12); l.position.y=1.5; g.add(l);
+  // cannons x6: z=±0.7 at x=-1,0,1 at y=0.75
+  const cm=mat(0x1A1A10);
+  for(let cx of[-1,0,1]){
+    for(let cz of[0.7,-0.7]){
+      const c=mesh(cyl(0.08,0.1,0.6,6),cm);
+      c.rotation.z=Math.PI/2; c.position.set(cx,0.75,cz); g.add(c);
+    }
+  }
+  g.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
+  return g;
+}
+
 /* dispatch */
 const BLDG_MAKERS = {
   wizard_tower: mkWizardTower,
@@ -139,6 +272,9 @@ const BLDG_MAKERS = {
   barracks:     mkBarracks,
   shipyard:     mkShipyard,
   crystal_forge:mkCrystalForge,
+  lighthouse:   mkLighthouse,
+  harbor:       mkHarbor,
+  ballista_tower: mkBallista,
 };
 function mkBuilding(type){ return (BLDG_MAKERS[type]||mkWizardTower)(); }
 

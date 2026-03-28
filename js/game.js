@@ -12,12 +12,15 @@ const ISLAND_R = 8.3;
 const CT = { WATER:0, LAND:1, BEACH:2, FOREST:3, ROCK:4, CRYSTAL:5, BUILDING:6 };
 
 const BDEF = {
-  wizard_tower:  { name:'Wizard Tower',  hp:120, cost:{wood:30,stone:20},        dmg:22, range:22,  fireRate:1.8, proj:'magic'  },
-  cannon_tower:  { name:'Cannon Tower',  hp:160, cost:{wood:20,stone:40},        dmg:55, range:18,  fireRate:0.55,proj:'cannon' },
-  wall:          { name:'Stone Wall',    hp:350, cost:{stone:15},                dmg:0,  range:0,   fireRate:0,   proj:null     },
-  barracks:      { name:'Barracks',      hp:80,  cost:{wood:40,stone:20},        dmg:0,  range:0,   fireRate:0,   proj:null     },
-  shipyard:      { name:'Shipyard',      hp:80,  cost:{wood:60,stone:20},        dmg:0,  range:0,   fireRate:0,   proj:null     },
-  crystal_forge: { name:'Crystal Forge', hp:60,  cost:{stone:25,crystal:20},     dmg:0,  range:0,   fireRate:0,   proj:null     },
+  wizard_tower:   { name:'Wizard Tower',  hp:120, cost:{wood:30,stone:20},       dmg:22, range:22,  fireRate:1.8,  proj:'magic'  },
+  cannon_tower:   { name:'Cannon Tower',  hp:160, cost:{wood:20,stone:40},       dmg:55, range:18,  fireRate:0.55, proj:'cannon' },
+  wall:           { name:'Stone Wall',    hp:350, cost:{stone:15},               dmg:0,  range:0,   fireRate:0,    proj:null     },
+  barracks:       { name:'Barracks',      hp:80,  cost:{wood:40,stone:20},       dmg:0,  range:0,   fireRate:0,    proj:null     },
+  shipyard:       { name:'Shipyard',      hp:80,  cost:{wood:60,stone:20},       dmg:0,  range:0,   fireRate:0,    proj:null     },
+  crystal_forge:  { name:'Crystal Forge', hp:60,  cost:{stone:25,crystal:20},    dmg:0,  range:0,   fireRate:0,    proj:null     },
+  lighthouse:     { name:'Lighthouse',    hp:80,  cost:{wood:40,stone:20},       dmg:0,  range:0,   fireRate:0,    proj:null, rangeBonus:4 },
+  harbor:         { name:'Harbor',        hp:100, cost:{wood:50,stone:30},       dmg:0,  range:0,   fireRate:0,    proj:null, goldRate:10  },
+  ballista_tower: { name:'Ballista Tower',hp:110, cost:{wood:30,crystal:15},     dmg:70, range:28,  fireRate:0.2,  proj:'cannon', pierce:true },
 };
 
 const SDEFS = {
@@ -25,7 +28,21 @@ const SDEFS = {
   shield:   { cost:{crystal:3},  cd:30 },
   storm:    { cost:{crystal:10}, cd:45 },
   summon:   { cost:{crystal:8},  cd:60 },
+  tidal:    { cost:{crystal:12}, cd:50, act:2 },
+  chain:    { cost:{crystal:8},  cd:35, act:2 },
 };
+
+// Boon definitions for chapter-complete selection
+const BOONS = [
+  { id:'dmg_up',    icon:'⚔',  name:'Warrior\'s Resolve',  desc:'+25% tower damage for rest of act',    apply(g){ g.boonMods.dmg  = (g.boonMods.dmg||1)*1.25; } },
+  { id:'range_up',  icon:'👁',  name:'Eagle Vision',         desc:'+4 range on all towers',               apply(g){ g.boonMods.range = (g.boonMods.range||0)+4; } },
+  { id:'crystal_up',icon:'💎', name:'Crystal Bounty',        desc:'Start each wave with +20 crystal',     apply(g){ g.boonMods.crystalBonus = (g.boonMods.crystalBonus||0)+20; } },
+  { id:'gold_up',   icon:'🪙', name:'Merchant\'s Eye',       desc:'+15 gold passive income (per 10s)',    apply(g){ g.boonMods.goldBonus = (g.boonMods.goldBonus||0)+15; } },
+  { id:'hp_regen',  icon:'🛡', name:'Stoneheart',             desc:'Buildings regenerate 2 HP/min',        apply(g){ g.boonMods.hpRegen = true; } },
+  { id:'harvest_up',icon:'🌲', name:'Nature\'s Gift',         desc:'+50% harvest yield',                   apply(g){ g.boonMods.harvestMult = (g.boonMods.harvestMult||1)*1.5; } },
+  { id:'wall_aura', icon:'🧱', name:'Fortress Mind',          desc:'Walls slow enemies within 4 units',   apply(g){ g.boonMods.wallRange = 4; } },
+  { id:'fire_rate', icon:'⚡', name:'Battle Frenzy',           desc:'+30% tower fire rate',                 apply(g){ g.boonMods.fireRate = (g.boonMods.fireRate||1)*1.3; } },
+];
 
 // ── §2  HELPERS ──────────────────────────────────────────────
 function cellWorld(gx, gz) {
@@ -52,7 +69,7 @@ function ctColor(type, h) {
 // ── §3  GAME OBJECT ──────────────────────────────────────────
 const game = {
   // ── state ──────────────────────────────────────────────────
-  phase:        'title',    // title|dialogue|prep|wave|conquest|victory|defeat
+  phase:        'title',    // title|dialogue|prep|wave|conquest|victory|defeat|endless
   chapterIdx:   0,
   res:          { wood:120, stone:80, crystal:20, gold:200 },
   mode:         'harvest',
@@ -67,17 +84,32 @@ const game = {
   projectiles:  [],
   waveTimer:    70,
   waveActive:   false,
+  waveIdx:      0,          // current wave index within chapter
   playerShips:  0,
   conquestDone: [false,false,false],
-  spellCds:     { fireball:0, shield:0, storm:0, summon:0 },
+  spellCds:     { fireball:0, shield:0, storm:0, summon:0, tidal:0, chain:0 },
   destroyCount: 0,
+  destroyCountWave: 0,      // buildings lost this chapter (for stars)
   harvestedCells: [],
   dialogQueue:  [],
   dialogIdx:    0,
   _dialogDone:  null,
   keys:         {},
-  camTarget:    null,      // THREE.Vector3 – set in init
+  camTarget:    null,
   camDist:      30,
+  // 2.0 systems
+  difficulty:   'normal',   // 'easy'|'normal'|'hard'
+  diffMult:     { enemyHp:1.0, prepTime:1.0, pirates:1.0 },
+  boonMods:     {},          // active boon effects
+  activeBoons:  [],          // picked boon ids
+  upgrades:     {},          // "gx,gz" → { A:0, B:0, C:0 } level map
+  unlocks:      { act2:false, act3:false },
+  endlessMode:  false,
+  endlessWave:  0,
+  _goldTimer:   0,
+  _harborTimer: 0,
+  _regenTimer:  0,
+  _selectedBuilding: null,  // for upgrade panel
 
   // ── Three.js handles ───────────────────────────────────────
   renderer: null, camera: null, scene: null,
@@ -88,6 +120,15 @@ const game = {
   // ════════════════════════════════════════════════════════════
   //  INIT
   // ════════════════════════════════════════════════════════════
+  setDifficulty(d) {
+    this.difficulty = d;
+    const M = { easy:{enemyHp:.6,prepTime:1.4,pirates:.7}, normal:{enemyHp:1,prepTime:1,pirates:1}, hard:{enemyHp:1.6,prepTime:.75,pirates:1.5} };
+    this.diffMult = M[d] || M.normal;
+    document.querySelectorAll('.diff-btn').forEach(b=>b.classList.remove('sel'));
+    const map = { easy:0, normal:1, hard:2 };
+    document.querySelectorAll('.diff-btn')[map[d]]?.classList.add('sel');
+  },
+
   startGame() {
     document.getElementById('title-screen').style.display = 'none';
     this._initThree();
@@ -401,12 +442,13 @@ class Building {
   update(dt) {
     if (this.shieldTimer > 0) { this.shieldTimer -= dt; if (this.shieldTimer <= 0) this.shielded = false; }
   }
-  nearestEnemy(list) {
+  nearestEnemy(list) { return this.nearestEnemyRange(list, this.def.range); }
+  nearestEnemyRange(list, range) {
     let best = null, bd = Infinity;
     for (const e of list) {
       if (!e.alive) continue;
       const dd = d2(e.x, e.z, this.x, this.z);
-      if (dd < this.def.range && dd < bd) { best = e; bd = dd; }
+      if (dd < range && dd < bd) { best = e; bd = dd; }
     }
     return best;
   }
@@ -465,11 +507,16 @@ class Unit {
       // Check wall slow: enemy units near a wall move at 40% speed
       let spd = this.speed;
       if (this.enemy && game.buildings) {
+        const wallR = (game.boonMods && game.boonMods.wallRange) || 2.5;
         for (const b of game.buildings) {
-          if (b.type === 'wall' && b.alive && d2(this.x, this.z, b.x, b.z) < 2.5) {
-            spd *= 0.4; break;
+          if (b.type === 'wall' && b.alive && d2(this.x, this.z, b.x, b.z) < wallR) {
+            spd *= 0.4;
+            // Thorns upgrade
+            if (b.thorns && !this._thornCd) { this.takeDamage(b.thorns); this._thornCd = 1; }
+            break;
           }
         }
+        if (this._thornCd > 0) this._thornCd -= 0.016;
       }
       const s = spd * dt;
       const dx = best.x - this.x, dz = best.z - this.z;
@@ -495,34 +542,66 @@ class Ship {
   constructor(type, x, z, scene) {
     this.type = type; this.alive = true;
     const S = {
-      sloop:   { hp:80,  dmg:18, rate:0.6 },
-      frigate: { hp:180, dmg:32, rate:0.4 },
-      galleon: { hp:450, dmg:55, rate:0.25 },
+      sloop:          { hp:80,  dmg:18, rate:0.6  },
+      frigate:        { hp:180, dmg:32, rate:0.4  },
+      galleon:        { hp:450, dmg:55, rate:0.25 },
+      ghost_ship:     { hp:60,  dmg:22, rate:0.65, ghost:true },
+      bomb_sloop:     { hp:40,  dmg:0,  rate:0,    bomber:true, speed:5.5 },
+      undead_galleon: { hp:650, dmg:65, rate:0.3,  undead:true, regen:3, fireImmune:true },
     }[type] || { hp:80, dmg:18, rate:0.6 };
-    this.hp = S.hp; this.maxHp = S.hp; this.dmg = S.dmg; this.rate = S.rate;
+    // Apply difficulty multiplier
+    const hpMult = (game && game.diffMult) ? game.diffMult.enemyHp : 1;
+    this.hp = Math.round(S.hp * hpMult); this.maxHp = this.hp;
+    this.dmg = S.dmg; this.rate = S.rate;
+    this.ghost = S.ghost || false;
+    this.bomber = S.bomber || false;
+    this.undead = S.undead || false;
+    this.regenRate = S.regen || 0;
+    this.fireImmune = S.fireImmune || false;
+    this.bomberSpeed = S.speed || null;
     this.x = x; this.z = z;
     this.phase = 'sailing';
     this.fireCd = 0; this.piratesDeployed = false; this.piratesToDeploy = 3;
     this.angle = Math.atan2(x, z);
-    const mk = { sloop:mkSloop, frigate:mkFrigate, galleon:mkGalleon }[type] || mkSloop;
+    const mk = {
+      sloop: mkSloop, frigate: mkFrigate, galleon: mkGalleon,
+      ghost_ship: typeof mkGhostShip !== 'undefined' ? mkGhostShip : mkSloop,
+      bomb_sloop: typeof mkBombSloop !== 'undefined' ? mkBombSloop : mkSloop,
+      undead_galleon: typeof mkUndeadGalleon !== 'undefined' ? mkUndeadGalleon : mkGalleon,
+    }[type] || mkSloop;
     this.mesh = mk(true);
     this.mesh.position.set(x, 0, z);
     this.mesh.rotation.y = Math.atan2(-x, -z);
+    // Ghost ships start semi-transparent
+    if (this.ghost) {
+      this.mesh.traverse(c=>{ if (c.isMesh && c.material) { c.material.transparent=true; c.material.opacity=0.22; } });
+      this._visible = false;
+    }
     scene.add(this.mesh);
   }
   get r() { return Math.sqrt(this.x*this.x + this.z*this.z); }
+  revealToWizard() {
+    if (!this.ghost) return;
+    this._visible = true;
+    this.mesh.traverse(c=>{ if (c.isMesh && c.material) c.material.opacity = 0.75; });
+  }
   update(dt) {
     if (!this.alive) return;
+    // Undead regen
+    if (this.undead && this.hp < this.maxHp) this.hp = Math.min(this.maxHp, this.hp + this.regenRate * dt);
     if (this.phase === 'sailing') {
       const dist = this.r;
-      const speed = { galleon:2.8, frigate:3.2, sloop:3.8 }[this.type] || 3.5;
+      // Bombers rush straight in without stopping
+      const speed = this.bomberSpeed ||
+        ({ galleon:2.8, frigate:3.2, sloop:3.8, ghost_ship:4.2, undead_galleon:2.2 }[this.type] || 3.5);
       this.x += (-this.x/dist)*speed*dt;
       this.z += (-this.z/dist)*speed*dt;
       this.mesh.position.set(this.x, 0, this.z);
-      if (dist < 28) this.phase = 'broadside';
+      if (this.bomber && dist < 19) { this._triggerExplosion(); return; }
+      if (!this.bomber && dist < 28) this.phase = 'broadside';
     } else {
-      const orb = { galleon:0.22, frigate:0.28, sloop:0.36 }[this.type] || 0.3;
-      const tR  = { galleon:24,   frigate:22,   sloop:20   }[this.type] || 22;
+      const orb = { galleon:0.22, frigate:0.28, sloop:0.36, ghost_ship:0.38, undead_galleon:0.18 }[this.type] || 0.3;
+      const tR  = { galleon:24,   frigate:22,   sloop:20,   ghost_ship:21,   undead_galleon:25   }[this.type] || 22;
       this.angle += orb * dt;
       const cur = this.r, newR = cur + (tR - cur)*dt*0.9;
       this.x = Math.sin(this.angle)*newR;
@@ -531,6 +610,15 @@ class Ship {
       this.mesh.position.set(this.x, bob, this.z);
       this.mesh.rotation.y = this.angle + Math.PI/2;
     }
+  }
+  _triggerExplosion() {
+    this.alive = false;
+    // AoE damage to buildings/units within radius 5
+    if (game && game.buildings) {
+      game.buildings.forEach(b=>{ if (b.alive && d2(b.x,b.z,this.x,this.z)<5) b.takeDamage(35); });
+      game.units.forEach(u=>{ if (!u.enemy && u.alive && d2(u.x,u.z,this.x,this.z)<5) u.takeDamage(35); });
+    }
+    game && game.notify('💥 Bomb Sloop EXPLODED!');
   }
   takeDamage(dmg) { this.hp -= dmg; if (this.hp <= 0) this.alive = false; }
   dispose(scene)  { scene.remove(this.mesh); }
@@ -577,17 +665,58 @@ Object.assign(game, {
       ...this.units.filter(u=>!u.enemy&&u.alive),
     ];
 
+    // Lighthouse range bonus + boon range
+    const lighthouseBonus = this.buildings.filter(b=>b.alive&&b.type==='lighthouse').length * 4
+      + (this.boonMods.range || 0);
+
+    // Harbor passive gold
+    this._harborTimer = (this._harborTimer||0) + dt;
+    if (this._harborTimer >= 20) {
+      this._harborTimer = 0;
+      const harbors = this.buildings.filter(b=>b.alive&&b.type==='harbor').length;
+      if (harbors > 0) { this.res.gold += harbors * 10; this.notify(`🚢 Harbor: +${harbors*10} gold`); }
+    }
+
+    // HP regen boon
+    if (this.boonMods.hpRegen) {
+      this._regenTimer = (this._regenTimer||0) + dt;
+      if (this._regenTimer >= 30) { this._regenTimer = 0; this.buildings.forEach(b=>{if(b.alive)b.hp=Math.min(b.maxHp,b.hp+1);}); }
+    }
+
+    // Reveal ghost ships to wizard towers
+    for (const s of this.ships) {
+      if (!s.ghost || s._visible) continue;
+      for (const b of this.buildings) {
+        if (b.alive && b.type==='wizard_tower' && d2(b.x,b.z,s.x,s.z) < b.def.range + lighthouseBonus)
+          s.revealToWizard();
+      }
+    }
+
     // Buildings auto-attack
+    const dmgMult = this.boonMods.dmg || 1;
+    const frMult  = this.boonMods.fireRate || 1;
     for (const b of this.buildings) {
       if (!b.alive) continue;
       b.update(dt);
       if (b.def.fireRate > 0) {
         b.fireCd -= dt;
         if (b.fireCd <= 0) {
-          const t = b.nearestEnemy(enemies);
+          const effRange = b.def.range + lighthouseBonus;
+          // Ghost ships only targetable by wizard/ballista
+          const pool = (b.type==='wizard_tower'||b.type==='ballista_tower')
+            ? enemies : enemies.filter(e=>!(e instanceof Ship&&e.ghost&&!e._visible));
+          const t = b.nearestEnemyRange(pool, effRange);
           if (t) {
-            b.fireCd = 1 / b.def.fireRate;
-            this.projectiles.push(new Projectile(b.def.proj, {x:b.x,y:2.5,z:b.z}, t, b.def.dmg, this.scene));
+            b.fireCd = 1 / (b.def.fireRate * frMult);
+            const dmg = Math.round(b.def.dmg * dmgMult);
+            if (b.def.pierce) {
+              // Ballista: hit all enemies in a line
+              const ang = Math.atan2(t.x-b.x, t.z-b.z);
+              enemies.filter(e=>{ const ex=e.x-b.x,ez=e.z-b.z; return ex*Math.sin(ang)+ez*Math.cos(ang)>0 && Math.abs(ex*Math.cos(ang)-ez*Math.sin(ang))<1.5 && d2(b.x,b.z,e.x,e.z)<effRange; }).forEach(e=>e.takeDamage(dmg));
+              this.projectiles.push(new Projectile(b.def.proj, {x:b.x,y:2.5,z:b.z}, t, 0, this.scene));
+            } else {
+              this.projectiles.push(new Projectile(b.def.proj, {x:b.x,y:2.5,z:b.z}, t, dmg, this.scene));
+            }
           }
         }
       }
@@ -624,7 +753,11 @@ Object.assign(game, {
     this.units = this.units.filter(u=>u.alive);
 
     // Clean dead ships
-    this.ships.filter(s=>!s.alive).forEach(s=>{ this.notify('💥 Enemy ship sunk!'); s.dispose(this.scene); });
+    this.ships.filter(s=>!s.alive).forEach(s=>{
+      this.notify('💥 Enemy ship sunk!');
+      this._shipsThisChapter = (this._shipsThisChapter||0)+1;
+      s.dispose(this.scene);
+    });
     this.ships = this.ships.filter(s=>s.alive);
 
     // Clean dead buildings
@@ -659,22 +792,40 @@ Object.assign(game, {
     this.notify('⚠ Pirates boarding!');
   },
 
-  _launchWave() {
+  _launchWave(waveOverrideIdx) {
     const chap = STORY.chapters[this.chapterIdx];
     if (!chap.waves || !chap.waves.length) return;
-    const wconf = chap.waves[0];
+    if (waveOverrideIdx !== undefined) this.waveIdx = waveOverrideIdx;
+    const wconf = chap.waves[this.waveIdx] || chap.waves[0];
     this.waveActive = true;
     this.phase = 'wave';
-    if (chap.waveStart && chap.waveStart.length) this._showDialogue(chap.waveStart);
+    this.destroyCountWave = 0;
+    const dialogKey = this.waveIdx === 0 ? 'waveStart' : `waveStart${this.waveIdx+1}`;
+    const dialogLines = chap[dialogKey] || (this.waveIdx===0 ? chap.waveStart : null);
+    if (dialogLines && dialogLines.length) this._showDialogue(dialogLines);
+
+    // Flash wave incoming
+    const wi = document.getElementById('wave-incoming');
+    if (wi) { wi.style.display='block'; setTimeout(()=>wi.style.display='none', 2000); }
+
+    // Update wave manifest panel
     const types = [];
     for (const sw of wconf.ships) for (let i=0; i<sw.count; i++) types.push(sw.type);
+    const counts = {};
+    types.forEach(t=>counts[t]=(counts[t]||0)+1);
+    const icons = { sloop:'⛵', frigate:'🚢', galleon:'🏴‍☠️', ghost_ship:'👻', bomb_sloop:'💣', undead_galleon:'💀' };
+    const manifest = Object.entries(counts).map(([t,n])=>`${icons[t]||'⛵'} ${n}× ${t.replace('_',' ')}`).join('<br>');
+    const mEl = document.getElementById('wave-manifest');
+    if (mEl) mEl.innerHTML = `<b>Incoming:</b><br>${manifest}`;
+
     let idx = 0;
     const iv = setInterval(()=>{
       if (idx >= types.length) { clearInterval(iv); return; }
       const t = types[idx++];
       const a = Math.random()*Math.PI*2, dist2 = 55+Math.random()*15;
       const s = new Ship(t, Math.cos(a)*dist2, Math.sin(a)*dist2, this.scene);
-      s.piratesToDeploy = Math.ceil((wconf.pirates||3)/types.length) + (wconf.isBoss?2:0);
+      const pirM = (game.diffMult && game.diffMult.pirates) || 1;
+      s.piratesToDeploy = Math.round((Math.ceil((wconf.pirates||3)/types.length) + (wconf.isBoss?2:0)) * pirM);
       this.ships.push(s);
     }, 1800);
   },
@@ -685,16 +836,33 @@ Object.assign(game, {
     if (this.units.filter(u=>u.enemy&&u.alive).length > 0) return;
     this.waveActive = false;
     const chap = STORY.chapters[this.chapterIdx];
-    if (chap.id === 5) { this._showDialogue(chap.victory, ()=>this._showVictory()); return; }
-    for (const o of chap.objectives) if (o.type==='survive'||o.type==='boss') o.done = true;
-    this._showDialogue(chap.complete, ()=>{
-      if (chap.bonusRes)
-        Object.entries(chap.bonusRes).forEach(([k,v])=>{ this.res[k]=(this.res[k]||0)+v; });
-      this.notify('Chapter complete! Bonus resources granted.');
-      this._updateObjUI();
-      if (this.chapterIdx+1 < STORY.chapters.length)
-        setTimeout(()=>this._startChapter(this.chapterIdx+1), 1600);
-    });
+
+    // Multi-wave: advance to next wave after repair window
+    const totalWaves = chap.waves ? chap.waves.length : 1;
+    if (this.waveIdx < totalWaves - 1) {
+      this.waveIdx++;
+      this.notify(`✓ Wave ${this.waveIdx} cleared! Next wave in 45s...`);
+      this.phase = 'prep';
+      this.waveTimer = 45;
+      // Give crystal bonus between waves
+      if (this.boonMods.crystalBonus) this.res.crystal += this.boonMods.crystalBonus;
+      return;
+    }
+
+    // All waves done
+    this.waveIdx = 0;
+    const isFinalCh = (this.chapterIdx === STORY.chapters.length - 1);
+    if (isFinalCh) {
+      const victKey = chap.victory || chap.complete;
+      this._showDialogue(Array.isArray(victKey)?victKey:chap.complete, ()=>this._showVictory());
+      return;
+    }
+    for (const o of chap.objectives) if (o.type==='survive'||o.type==='boss'||o.type==='survive_waves') o.done = true;
+
+    // Clear wave manifest
+    const mEl = document.getElementById('wave-manifest'); if (mEl) mEl.innerHTML='';
+
+    this._showDialogue(chap.complete, ()=> this._showChapterComplete(chap));
   },
 
   castSpell(name) {
@@ -707,21 +875,215 @@ Object.assign(game, {
     this.spellCds[name] = sd.cd;
     if (name==='fireball') {
       this.notify('🔥 FIREBALL!');
+      // Fire immune ships not affected
       this.units.filter(u=>u.enemy && d2(u.x,u.z,0,0)<16).forEach(u=>u.takeDamage(65));
-      this.ships.filter(s=>s.r<16).forEach(s=>s.takeDamage(45));
+      this.ships.filter(s=>s.r<16 && !s.fireImmune).forEach(s=>s.takeDamage(55));
     } else if (name==='shield') {
       this.notify('🛡 Magic Shield activated!');
-      this.buildings.forEach(b=>{ b.shielded=true; b.shieldTimer=10; });
+      this.buildings.forEach(b=>{ b.shielded=true; b.shieldTimer=12; });
     } else if (name==='storm') {
       this.notify('⚡ LIGHTNING STORM!');
-      this.ships.forEach(s=>s.takeDamage(85));
-      this.units.filter(u=>u.enemy).forEach(u=>u.takeDamage(50));
+      this.ships.forEach(s=>s.takeDamage(90));
+      this.units.filter(u=>u.enemy).forEach(u=>u.takeDamage(55));
     } else if (name==='summon') {
       this.notify('🗿 Stone Golem summoned!');
       const a = Math.random()*Math.PI*2;
       this.units.push(new Unit('golem', Math.cos(a)*3, Math.sin(a)*3, this.scene, false));
+    } else if (name==='tidal') {
+      this.notify('🌊 TIDAL WAVE!');
+      this.ships.forEach(s=>{
+        s.takeDamage(30);
+        if (s.alive) { const r2=s.r+14; s.x=(s.x/s.r)*r2; s.z=(s.z/s.r)*r2; s.mesh.position.set(s.x,0,s.z); }
+      });
+    } else if (name==='chain') {
+      this.notify('⚡🔗 CHAIN LIGHTNING!');
+      const allEnemies = [...this.ships.filter(s=>s.alive), ...this.units.filter(u=>u.enemy&&u.alive)];
+      let last = null, dmg = 50;
+      for (let i=0; i<4; i++) {
+        const pool = allEnemies.filter(e=>e!==last&&e.alive);
+        if (!pool.length) break;
+        const next = pool.sort((a,b)=>last?d2(last.x,last.z,a.x,a.z)-d2(last.x,last.z,b.x,b.z):0)[0];
+        next.takeDamage(dmg); last=next; dmg=Math.round(dmg*0.65);
+      }
     }
   },
+  // ── Chapter complete overlay ─────────────────────────────────
+  _showChapterComplete(chap) {
+    const stars = this.destroyCount === 0 ? 3 : this.destroyCount <= 2 ? 2 : 1;
+    const starStr = '⭐'.repeat(stars) + '☆'.repeat(3-stars);
+    const act = chap.act || (this.chapterIdx < 5 ? 1 : this.chapterIdx < 10 ? 2 : 3);
+    const actNames = ['','THE CORSAIR WAR','THE CURSED DEPTHS','THE ANCIENT RECKONING'];
+
+    document.getElementById('cc-act').textContent   = `ACT ${act} — ${actNames[act]||''}`;
+    document.getElementById('cc-title').textContent = `Chapter ${chap.id} Complete`;
+    document.getElementById('cc-sub').textContent   = `"${chap.title}"`;
+    document.getElementById('cc-stars').textContent = starStr;
+    document.getElementById('cc-score').innerHTML   =
+      `Buildings lost: ${this.destroyCount} &nbsp;|&nbsp; Ships sunk: ${this._shipsThisChapter||0}`;
+    if (chap.bonusRes && Object.keys(chap.bonusRes).length) {
+      const bonusStr = Object.entries(chap.bonusRes).map(([k,v])=>`+${v} ${k}`).join('  ');
+      document.getElementById('cc-bonus').textContent = `Bonus: ${bonusStr}`;
+      Object.entries(chap.bonusRes).forEach(([k,v])=>{ this.res[k]=(this.res[k]||0)+v; });
+    } else { document.getElementById('cc-bonus').textContent = ''; }
+
+    // Boon selection
+    const boons = this._pickRandomBoons(3);
+    const boonLabel = document.getElementById('cc-boon-label');
+    const boonDiv   = document.getElementById('cc-boons');
+    if (boons.length) {
+      boonLabel.style.display = 'block';
+      boonDiv.innerHTML = boons.map(b=>`
+        <div class="boon-card" onclick="game._selectBoon('${b.id}',this)">
+          <div class="boon-icon">${b.icon}</div>
+          <div class="boon-name">${b.name}</div>
+          <div class="boon-desc">${b.desc}</div>
+        </div>`).join('');
+    } else {
+      boonLabel.style.display = 'none';
+      boonDiv.innerHTML = '';
+    }
+
+    document.getElementById('cc-next').style.display = boons.length ? 'none' : 'block';
+    document.getElementById('chap-complete').style.display = 'flex';
+    this.phase = 'dialogue'; // pause game
+    this._pendingChapter = this.chapterIdx + 1;
+    this._pendingBoons   = boons;
+  },
+
+  _pickRandomBoons(n) {
+    const available = BOONS.filter(b=>!this.activeBoons.includes(b.id));
+    const shuffled  = available.sort(()=>Math.random()-.5);
+    return shuffled.slice(0, Math.min(n, shuffled.length));
+  },
+
+  _selectBoon(id, el) {
+    document.querySelectorAll('.boon-card').forEach(c=>c.classList.remove('picked'));
+    el.classList.add('picked');
+    const boon = BOONS.find(b=>b.id===id);
+    if (boon) { boon.apply(this); this.activeBoons.push(id); }
+    document.getElementById('cc-next').style.display = 'block';
+  },
+
+  _advanceChapter() {
+    document.getElementById('chap-complete').style.display = 'none';
+    const next = this._pendingChapter || (this.chapterIdx + 1);
+    if (next >= STORY.chapters.length) { this._showVictory(); return; }
+    // Unlock act 2 / act 3 buildings+spells
+    const nextChap = STORY.chapters[next];
+    if ((nextChap.act||1) >= 2) this._unlockAct2();
+    if ((nextChap.act||1) >= 3) this._unlockAct3();
+    this.destroyCount = 0;
+    this._shipsThisChapter = 0;
+    this._startChapter(next);
+  },
+
+  _unlockAct2() {
+    if (this.unlocks.act2) return;
+    this.unlocks.act2 = true;
+    ['lighthouse','harbor'].forEach(id=>{
+      const el = document.getElementById(`bb-${id}`); if (el) el.classList.remove('locked');
+    });
+    ['tidal','chain'].forEach(id=>{
+      const el = document.getElementById(`sp-${id}`); if (el) el.classList.remove('locked-spell');
+    });
+    this.notify('🔓 Act 2 unlocked: Lighthouse, Harbor, Tidal Wave, Chain Lightning!');
+  },
+
+  _unlockAct3() {
+    if (this.unlocks.act3) return;
+    this.unlocks.act3 = true;
+    const el = document.getElementById('bb-ballista_tower'); if (el) el.classList.remove('locked');
+    this.notify('🔓 Act 3 unlocked: Ballista Tower!');
+  },
+
+  // ── Upgrade Panel ─────────────────────────────────────────────
+  _openUpgrade(gx, gz) {
+    const b = this.bldgMap[`${gx},${gz}`];
+    if (!b || !b.alive) return;
+    this._selectedBuilding = b;
+    const key = `${gx},${gz}`;
+    if (!this.upgrades[key]) this.upgrades[key] = { A:0, B:0, C:0 };
+    const upg = this.upgrades[key];
+    document.getElementById('up-name').textContent = b.def.name;
+    document.getElementById('up-hp').textContent   = `HP: ${b.hp} / ${b.maxHp}`;
+
+    const upgDefs = {
+      wizard_tower:   [{l:'A',name:'+5 Dmg',  cost:40},{l:'B',name:'+4 Range', cost:50},{l:'C',name:'+0.4 Rate',cost:60}],
+      cannon_tower:   [{l:'A',name:'+15 Dmg', cost:50},{l:'B',name:'+4 Range', cost:60},{l:'C',name:'Splash',   cost:80}],
+      ballista_tower: [{l:'A',name:'+20 Dmg', cost:60},{l:'B',name:'+1 Pierce',cost:70},{l:'C',name:'+6 Range', cost:55}],
+      wall:           [{l:'A',name:'+150 HP', cost:20},{l:'B',name:'Thorns 5dmg',cost:40}],
+      default:        [{l:'A',name:'+HP',     cost:30}],
+    };
+    const defs = upgDefs[b.type] || upgDefs.default;
+    const btnHtml = defs.map(d=>{
+      const lv = upg[d.l]||0; const maxed = lv>=3;
+      return `<button class="upg-btn${maxed?' maxed':''}" onclick="game._doUpgrade('${key}','${d.l}',${d.cost})">`+
+        `${d.name} <span class="upg-level">${'★'.repeat(lv)}${'☆'.repeat(3-lv)} ${d.cost}🪙</span></button>`;
+    }).join('');
+    document.getElementById('up-buttons').innerHTML = btnHtml;
+    document.getElementById('upgrade-panel').style.display = 'block';
+  },
+
+  _doUpgrade(key, slot, cost) {
+    if (!this.upgrades[key]) this.upgrades[key] = { A:0, B:0, C:0 };
+    const lv = this.upgrades[key][slot]||0;
+    if (lv >= 3) { this.notify('Already maxed!'); return; }
+    if (this.res.gold < cost) { this.notify(`Need ${cost} 🪙`); return; }
+    this.res.gold -= cost;
+    this.upgrades[key][slot] = lv + 1;
+    const b = this.bldgMap[key];
+    if (b) {
+      if (slot==='A') { if (b.def.dmg>0) b.def.dmg += b.type==='cannon_tower'?15:b.type==='ballista_tower'?20:5; else b.hp=Math.min(b.maxHp,b.hp+150); }
+      if (slot==='B') { if (b.def.range>0) b.def.range += (b.type==='ballista_tower'?6:4); else { b.thorns=5; } }
+      if (slot==='C') { if (b.def.fireRate>0) b.def.fireRate += 0.4; else b.def.splash=true; }
+      // Visual upgrade glow
+      const lvTotal = (this.upgrades[key].A||0)+(this.upgrades[key].B||0)+(this.upgrades[key].C||0);
+      const glowColor = lvTotal>=6?0xffffff:lvTotal>=3?0xcccccc:0xffd700;
+      b.mesh.traverse(c=>{ if(c.isPointLight) c.color.setHex(glowColor); });
+    }
+    this.notify(`✓ Upgraded ${b?b.def.name:''}`);
+    const [ugx,ugz] = key.split(',').map(Number);
+    this._openUpgrade(ugx, ugz);
+  },
+
+  _closeUpgrade() {
+    document.getElementById('upgrade-panel').style.display = 'none';
+    this._selectedBuilding = null;
+  },
+
+  // ── Endless mode ──────────────────────────────────────────────
+  _startEndless() {
+    document.getElementById('end-screen').style.display = 'none';
+    document.getElementById('endless-banner').style.display = 'block';
+    this.endlessMode = true;
+    this.endlessWave = 0;
+    this.phase = 'prep';
+    this.waveTimer = 60;
+    this._launchEndlessWave();
+  },
+
+  _launchEndlessWave() {
+    this.endlessWave++;
+    document.getElementById('endless-wave').textContent = this.endlessWave;
+    const count = Math.min(2 + this.endlessWave, 12);
+    const types = ['sloop','sloop','frigate','frigate','galleon','ghost_ship','bomb_sloop','undead_galleon'];
+    const wave = [];
+    for (let i=0; i<count; i++) {
+      const t = types[Math.min(Math.floor((this.endlessWave-1)/2+Math.random()*2), types.length-1)];
+      wave.push(t);
+    }
+    wave.forEach((t,i)=>{
+      setTimeout(()=>{
+        const a = Math.random()*Math.PI*2, r = 55+Math.random()*15;
+        const s = new Ship(t, Math.cos(a)*r, Math.sin(a)*r, this.scene);
+        s.piratesToDeploy = 3 + Math.floor(this.endlessWave/2);
+        this.ships.push(s);
+      }, i*1800);
+    });
+    this.waveActive = true;
+    this.phase = 'wave';
+  },
+
 });
 // end Part B
 
@@ -787,6 +1149,10 @@ Object.assign(game, {
     const hit = this._hitGrid(e);
     if (!hit) return;
     const { gx, gz } = hit;
+    // In build mode, clicking an existing building opens upgrade panel
+    if (this.mode==='build' && this.grid[gz][gx]===CT.BUILDING && !this.selectedBldg) {
+      this._openUpgrade(gx, gz); return;
+    }
     if      (this.mode==='harvest') this._doHarvest(gx, gz);
     else if (this.mode==='build')   this._doBuild(gx, gz);
     else if (this.mode==='train')   this._doTrain(gx, gz);
@@ -802,7 +1168,8 @@ Object.assign(game, {
       [CT.CRYSTAL]: { crystal: 8  + Math.floor(Math.random()*6)  },
     }[ct];
     if (!gains) { this.notify('Nothing to harvest here.'); return; }
-    for (const [k,v] of Object.entries(gains)) this.res[k] += v;
+    const mult = this.boonMods.harvestMult || 1;
+    for (const [k,v] of Object.entries(gains)) this.res[k] += Math.round(v*mult);
     const icons = { wood:'🪵', stone:'🪨', crystal:'💎' };
     const [[k,v]] = Object.entries(gains);
     this.notify(`+${v} ${icons[k]}`);
@@ -879,7 +1246,7 @@ Object.assign(game, {
       this.ships = [];
       this.conquestDone[0] = true;
       this.notify('🏴 Isle of Crimson CAPTURED!');
-      const el = document.getElementById('isl-1');
+      const el = document.getElementById('isl-0');
       if (el) { el.className='isl friendly'; el.textContent='● Isle of Crimson (Ours)'; }
       for (const o of STORY.chapters[this.chapterIdx].objectives)
         if (o.type==='conquer') o.done = true;
@@ -896,16 +1263,25 @@ Object.assign(game, {
   // ── §8  STORY & CHAPTER SYSTEM ──────────────────────────────
   _startChapter(idx) {
     this.chapterIdx = idx;
+    this.waveIdx = 0;
+    this.destroyCountWave = 0;
+    this._shipsThisChapter = 0;
     const chap = STORY.chapters[idx];
-    // Reset per-chapter state
+    const act = chap.act || (idx < 5 ? 1 : idx < 10 ? 2 : 3);
+    const actNames = ['','THE CORSAIR WAR','THE CURSED DEPTHS','THE ANCIENT RECKONING'];
+    // Reset wave state
     this.waveActive = false;
-    this.waveTimer = idx < 2 ? 120 : idx < 4 ? 90 : 75;
+    const base = idx < 5 ? 120 : idx < 10 ? 100 : 80;
+    this.waveTimer = Math.round(base * (this.diffMult.prepTime || 1));
+    // Act banner
+    const ab = document.getElementById('act-banner');
+    if (ab) ab.textContent = `ACT ${act} — ${actNames[act]||''}  ·  CHAPTER ${chap.id}: ${chap.title.toUpperCase()}`;
+    // Crystal bonus from boon at wave start
+    if (this.boonMods.crystalBonus) this.res.crystal += this.boonMods.crystalBonus;
     this._updateObjUI();
-    this._showChapTitle(chap.id, chap.title, chap.sub);
+    this._showChapTitle(chap.id, chap.title, chap.sub, act);
     setTimeout(()=>{
-      this._showDialogue(chap.intro, ()=>{
-        this.phase = 'prep';
-      });
+      this._showDialogue(chap.intro, ()=>{ this.phase = 'prep'; });
     }, 2400);
   },
 
@@ -941,12 +1317,14 @@ Object.assign(game, {
     this._renderDialog();
   },
 
-  _showChapTitle(num, title, sub) {
-    document.getElementById('ct-ch').textContent = `Chapter ${num}`;
-    document.getElementById('ct-ti').textContent  = title;
+  _showChapTitle(num, title, sub, act) {
+    const actEl = document.getElementById('ct-act');
+    if (actEl && act) actEl.textContent = `ACT ${act}`;
+    document.getElementById('ct-ch').textContent = `Chapter ${num}: ${title}`;
+    document.getElementById('ct-ti').textContent  = sub || '';
     const el = document.getElementById('chap-title');
     el.style.display = 'block';
-    setTimeout(()=>{ el.style.display='none'; }, 2200);
+    setTimeout(()=>{ el.style.display='none'; }, 2800);
   },
 
   // ── §9  OBJECTIVES ───────────────────────────────────────────
@@ -1006,14 +1384,16 @@ Object.assign(game, {
 
     // Spell cooldown bar heights
     for (const [name, cd] of Object.entries(this.spellCds)) {
+      if (!SDEFS[name]) continue;
       const pct = cd > 0 ? (cd / SDEFS[name].cd) * 100 : 0;
       const el = document.getElementById(`cd-${name}`);
       if (el) el.style.height = pct + '%';
     }
 
-    // Building button affordability
+    // Building button affordability (skip locked ones)
     document.querySelectorAll('.bb').forEach(btn=>{
       const type = btn.dataset.b; if (!type||!BDEF[type]) return;
+      if (btn.classList.contains('locked')) return;
       const ok = Object.entries(BDEF[type].cost).every(([k,v])=>this.res[k]>=v);
       btn.classList.toggle('off', !ok);
     });
@@ -1037,11 +1417,17 @@ Object.assign(game, {
   },
 
   _showVictory() {
+    // Endless mode — chain another wave
+    if (this.endlessMode) {
+      setTimeout(()=>{ this.phase='prep'; this.waveTimer=45; this._launchEndlessWave(); }, 3000);
+      return;
+    }
     this.phase = 'victory';
     document.getElementById('end-title').textContent = '⚓ Victory! ⚓';
     document.getElementById('end-text').textContent  =
-      'The Crystal Archipelago is saved! The Pirate King is defeated, his fleet scattered to the winds. Peace returns to these waters — thanks to you, Wizard.';
+      'The Crystal Archipelago is saved! The Abyss Leviathan is sealed, the Pirate King defeated. Peace returns to these waters — thanks to you, Wizard.';
     document.getElementById('end-screen').style.display = 'flex';
+    document.getElementById('end-endless').style.display = 'block';
   },
 
   _showDefeat() {
@@ -1096,9 +1482,13 @@ Object.assign(game, {
     // Rotate shore foam ring
     if (this._foamMesh) this._foamMesh.rotation.z = t * 0.12;
 
-    // Passive gold income: +5 every 10 seconds
+    // Passive gold income: +5 (+boon bonus) every 10 seconds
     this._goldTimer = (this._goldTimer || 0) + dt;
-    if (this._goldTimer >= 10) { this._goldTimer -= 10; this.res.gold += 5; }
+    if (this._goldTimer >= 10) {
+      this._goldTimer -= 10;
+      const income = 5 + (this.boonMods.goldBonus || 0);
+      this.res.gold += income;
+    }
 
     // Resource regeneration
     for (const hc of this.harvestedCells) {
