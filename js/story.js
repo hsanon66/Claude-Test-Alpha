@@ -351,3 +351,225 @@ const STORY = {
       bonusRes: { wood:70, stone:60, crystal:50, gold:200 },
     },
 
+    // ═══════════════════════════════════════════════════════════
+    //  ACT 3 — THE ANCIENT RECKONING  (Chapters 11–15, Crystal Nexus)
+    // ═══════════════════════════════════════════════════════════
+
+    {
+      id: 11, act: 3, island: 'nexus',
+      title: 'Ruins of the Ancients',
+      sub:   'A forgotten civilization',
+      objectives: [
+        { id:'wood50',    text:'Harvest 50 Wood',     type:'resource', resource:'wood',    target:50 },
+        { id:'stone40',   text:'Harvest 40 Stone',    type:'resource', resource:'stone',   target:40 },
+        { id:'crystal30', text:'Harvest 30 Crystal',  type:'resource', resource:'crystal', target:30 },
+        { id:'forge11',   text:'Build Crystal Forge', type:'building', building:'crystal_forge', target:1 },
+        { id:'surv11',    text:'Survive the assault', type:'survive' },
+      ],
+      waveCount: 1,
+      waves: [
+        { ships:[{type:'sloop',count:4},{type:'frigate',count:2}], pirates:6 }
+      ],
+      intro: [
+        { speaker:'The Chronicler', portrait:'✨📜', text:'I have waited three thousand years for someone to find this place. Welcome, wizard, to the Crystal Nexus — last great work of the Architects.' },
+        { speaker:'You', portrait:'🧙', text:'Who are you?' },
+        { speaker:'The Chronicler', portrait:'✨📜', text:'I am what remains of the last Architect. A spirit bound to these ruins, keeper of what was built here. The Nexus was designed to contain the Abyss Leviathan — a creature older than the islands themselves, which feeds on crystal energy.' },
+        { speaker:'Syrenna', portrait:'🧜', text:'The cage you mentioned. Three thousand years ago they sealed it here?' },
+        { speaker:'The Chronicler', portrait:'✨📜', text:'Yes. But the seal weakens. Every crystal the pirates harvested, every ship powered by void energy — it fed the Leviathan. Now it stirs beneath us. You must rebuild the five Crystal Pillars of the Nexus. They are the lock. The Leviathan is what lies behind the door.' },
+        { speaker:'Captain Ironhook', portrait:'🏴‍☠️', text:'So everything. The Pirate King, Rotgut, the Void Tide — all of it was this creature feeding?' },
+        { speaker:'The Chronicler', portrait:'✨📜', text:'Pieces on a board. It cannot act directly — not yet. But it can whisper. And pirates are very good at listening to whispers that promise power.' },
+        { speaker:'You', portrait:'🧙', text:'Five pillars. We build them, we seal it. That\'s the plan.' },
+        { speaker:'The Chronicler', portrait:'✨📜', text:'That is the plan. But the Leviathan knows you are here. Its servants will come.' },
+      ],
+      waveStart: [
+        { speaker:'The Chronicler', portrait:'✨📜', text:'Ancient pirate wraiths — servants bound to the Leviathan before the seal. They come to prevent restoration of the Nexus. Do not let them reach the Crystal Pillars!' },
+        { speaker:'Admiral Quinn', portrait:'⚓', text:'All towers, engage! Protect the Chronicler!' },
+      ],
+      complete: [
+        { speaker:'The Chronicler', portrait:'✨📜', text:'The first wave is repelled. You have secured enough ground to begin the work. But do not mistake this for victory — the Leviathan has only begun to test you.' },
+        { speaker:'Elder Meryn', portrait:'👴', text:'(via message) How are conditions at the Nexus?' },
+        { speaker:'Syrenna', portrait:'🧜', text:'Strange. Magnificent. The crystal formations here are unlike anything in the Archipelago — they sing, Elder Meryn. Literally sing. Like the whole island is alive.' },
+        { speaker:'The Chronicler', portrait:'✨📜', text:'It is. Or it was. The Leviathan\'s corruption silenced it three thousand years ago. As you rebuild the pillars, the song returns. That is how you will know the seal is holding.' },
+      ],
+      bonusRes: { wood:70, stone:60, crystal:45, gold:200 },
+    },
+
+    {
+      id: 12, act: 3, island: 'nexus',
+      title: 'The Fractured Shore',
+      sub:   'The island tears itself apart',
+      objectives: [
+        { id:'ballista2', text:'Build 2 Ballista Towers', type:'building', building:'ballista_tower', target:2 },
+        { id:'wall5',     text:'Build 5 Stone Walls',     type:'building', building:'wall',           target:5 },
+        { id:'surv12',    text:'Survive the assault',     type:'survive' },
+      ],
+      waveCount: 1,
+      waves: [
+        { ships:[{type:'sloop',count:3},{type:'frigate',count:3},{type:'bomb_sloop',count:2}], pirates:8 }
+      ],
+      intro: [
+        { speaker:'The Chronicler', portrait:'✨📜', text:'The Leviathan has begun to act. It cannot reach the surface yet — but it can press against the seafloor beneath us. Some sections of the shore will flood.' },
+        { speaker:'Admiral Quinn', portrait:'⚓', text:'Flood? How much of the island are we talking about?' },
+        { speaker:'The Chronicler', portrait:'✨📜', text:'The southern channels first. Then the eastern approach. The Leviathan will try to create waterways for its bomb ships to exploit — routes that bypass your walls. Build the walls now, before the water rises.' },
+        { speaker:'Captain Ironhook', portrait:'🏴‍☠️', text:'I\'ve sailed enough volcanic coasts to know what a seafloor fracture looks like. We have maybe an hour before the first crack opens. Build fast.' },
+        { speaker:'Syrenna', portrait:'🧜', text:'The Architects built something here — I found it in the ruins. A Ballista Tower design. Their weapon against large creatures. Against things like the Leviathan. Study the plans and build them.' },
+        { speaker:'You', portrait:'🧙', text:'Ballista Towers. Piercing bolts that hit everything in a line. That could tear through an entire column of ships.' },
+        { speaker:'The Chronicler', portrait:'✨📜', text:'Or through the hide of a Leviathan. Build them, wizard. You will need them before this is done.' },
+      ],
+      waveStart: [
+        { speaker:'Admiral Quinn', portrait:'⚓', text:'The ground is shaking — fracture lines opening in the south! And enemy sails on the horizon — bomb sloops in the vanguard! CANNONS AND BALLISTAS, OPEN FIRE!' },
+        { speaker:'The Chronicler', portrait:'✨📜', text:'Hold the line! Every moment you hold is another moment the Crystal Pillars grow stronger!' },
+      ],
+      complete: [
+        { speaker:'Syrenna', portrait:'🧜', text:'Shore stabilized. The cracks have stopped spreading — the pillar energy is reinforcing the rock.' },
+        { speaker:'Admiral Quinn', portrait:'⚓', text:'My scouts report something in the deep water north of the island. Something... enormous. Moving slowly. Circling.' },
+        { speaker:'The Chronicler', portrait:'✨📜', text:'The Leviathan. It surfaces when it believes the seal is weak enough. What your Admiral sees is its shadow at a thousand fathoms. When it rises fully — and it will — every ballista on this island must be ready.' },
+        { speaker:'You', portrait:'🧙', text:'Then we keep building. More towers. More walls. More pillars. We don\'t give it a crack to squeeze through.' },
+        { speaker:'Captain Ironhook', portrait:'🏴‍☠️', text:'I like this wizard. Very practical.' },
+      ],
+      bonusRes: { wood:75, stone:70, crystal:50, gold:220 },
+    },
+
+    {
+      id: 13, act: 3, island: 'nexus',
+      title: 'The Leviathan Stirs',
+      sub:   'From the deep it rises',
+      objectives: [
+        { id:'ballista3',  text:'Build 3 Ballista Towers', type:'building', building:'ballista_tower', target:3 },
+        { id:'lighthouse2',text:'Build 2 Lighthouses',     type:'building', building:'lighthouse',     target:2 },
+        { id:'surv13',     text:'Survive the assault',     type:'survive' },
+      ],
+      waveCount: 1,
+      waves: [
+        { ships:[{type:'frigate',count:3},{type:'ghost_ship',count:3},{type:'undead_galleon',count:1}], pirates:10 }
+      ],
+      intro: [
+        { speaker:'The Chronicler', portrait:'✨📜', text:'The Leviathan is testing the seal actively now. It sends tendrils — extensions of itself — up through the fractures to probe for weakness. You will see them at the shore. They are not ships. They are part of it.' },
+        { speaker:'You', portrait:'🧙', text:'Tentacles.' },
+        { speaker:'The Chronicler', portrait:'✨📜', text:'Yes. The Architects called them tide-arms. They move quickly, they reach far onto land, and ordinary weapons barely scratch them. The Ballista Towers were designed specifically for this — the piercing bolt disrupts the void-flesh binding them together.' },
+        { speaker:'Syrenna', portrait:'🧜', text:'I can feel the crystal pillars resonating. We\'re close to full restoration — maybe two more major battles. If we can hold the Leviathan back until the fifth pillar is complete, the seal fires automatically.' },
+        { speaker:'Captain Ironhook', portrait:'🏴‍☠️', text:'Define \'automatically\'.' },
+        { speaker:'Syrenna', portrait:'🧜', text:'All five pillars discharge simultaneously. A ring of pure crystal energy that drives the Leviathan back to the abyss and seals it there for another ten thousand years.' },
+        { speaker:'Admiral Quinn', portrait:'⚓', text:'And if it breaks the seal before we finish?' },
+        { speaker:'The Chronicler', portrait:'✨📜', text:'Then the Crystal Archipelago ceases to exist. So let us make certain that does not happen.' },
+      ],
+      waveStart: [
+        { speaker:'Admiral Quinn', portrait:'⚓', text:'CONTACT! Tentacles emerging from the northern shallows — and ships behind them! Ghost ships and a black galleon! BALLISTAS — TARGET THE GALLEON\'S VOID CRYSTAL!' },
+        { speaker:'The Chronicler', portrait:'✨📜', text:'*A sound like a thousand ships breaking at once echoes across the water. The Leviathan\'s voice. It knows we are close.*' },
+        { speaker:'You', portrait:'🧙', text:'HOLD. EVERYTHING. Let\'s show this thing what three thousand years of waiting gets you.' },
+      ],
+      complete: [
+        { speaker:'Syrenna', portrait:'🧜', text:'Wave repelled. The Leviathan has retreated — for now. I can feel the fourth pillar beginning to resonate.' },
+        { speaker:'The Chronicler', portrait:'✨📜', text:'One more. One more battle, and the fifth pillar completes the circuit. Then Syrenna guides the discharge and it ends.' },
+        { speaker:'You', portrait:'🧙', text:'It won\'t make it easy. It\'ll send everything it has.' },
+        { speaker:'The Chronicler', portrait:'✨📜', text:'Yes. The final battle will be unlike anything the Archipelago has ever seen. Every fleet it controls, every ghost, every corrupted thing it has spent centuries building — it will send them all.' },
+        { speaker:'Captain Ironhook', portrait:'🏴‍☠️', text:'Good. I\'m tired of this. Let\'s end it.' },
+        { speaker:'Elder Meryn', portrait:'👴', text:'We are with you, wizard. All of us. Whatever comes next — you do not face it alone.' },
+      ],
+      bonusRes: { wood:80, stone:75, crystal:60, gold:250 },
+    },
+
+    {
+      id: 14, act: 3, island: 'nexus',
+      title: 'All Fleets Converge',
+      sub:   'The final armada',
+      objectives: [
+        { id:'surv14', text:'Survive all three waves', type:'survive_waves' },
+      ],
+      waveCount: 3,
+      waves: [
+        { ships:[{type:'sloop',count:5},{type:'frigate',count:2}], pirates:8 },
+        { ships:[{type:'frigate',count:3},{type:'ghost_ship',count:3},{type:'bomb_sloop',count:2}], pirates:10 },
+        { ships:[{type:'galleon',count:2},{type:'undead_galleon',count:1},{type:'ghost_ship',count:2}], pirates:12 },
+      ],
+      intro: [
+        { speaker:'The Chronicler', portrait:'✨📜', text:'The fifth pillar is almost complete. But the Leviathan has felt it. Every fleet it controls — every corsair ghost, every void-ship, every creature bound to its will — it has called them here. Three waves. All at once, from all directions.' },
+        { speaker:'Admiral Quinn', portrait:'⚓', text:'My lord — I count at least thirty sails on the horizon. Coming from the west, north, and south simultaneously. If they hit us all at once—' },
+        { speaker:'You', portrait:'🧙', text:'They won\'t. We\'ll hold each wave until it breaks. Then the next. Then the next.' },
+        { speaker:'Syrenna', portrait:'🧜', text:'I\'ll reinforce the crystal pillars between waves. Just keep them away from me long enough to complete the final resonance ritual.' },
+        { speaker:'Captain Ironhook', portrait:'🏴‍☠️', text:'All my guns. All my cannons. Everything I have. FOR THE ARCHIPELAGO. For every sailor who was ever lost in these waters.' },
+        { speaker:'Elder Meryn', portrait:'👴', text:'This is what we built toward. Every tower, every wall, every crystal harvested — it was all for this moment. Make it count, wizard.' },
+      ],
+      waveStart: [
+        { speaker:'Admiral Quinn', portrait:'⚓', text:'FIRST FLEET — WEST APPROACH! Sloops and frigates! All towers, concentrate on the western shore — FIRE!' },
+      ],
+      waveStart2: [
+        { speaker:'Admiral Quinn', portrait:'⚓', text:'First wave broken! But the second is already moving — GHOST SHIPS in the vanguard, bomb sloops behind them! Wizard towers — reveal them! CANNONS — TARGET ANYTHING THAT GLOWS RED!' },
+        { speaker:'Syrenna', portrait:'🧜', text:'Fifth pillar is at seventy percent! HOLD THEM BACK JUST A LITTLE LONGER!' },
+      ],
+      waveStart3: [
+        { speaker:'Admiral Quinn', portrait:'⚓', text:'GALLEONS! The flagships! Two black galleons and an undead behemoth — this is everything they have! THIS IS EVERYTHING! HOLD — THE — LINE!' },
+        { speaker:'The Chronicler', portrait:'✨📜', text:'The fifth pillar resonates! Syrenna — begin the final sequence! Just a few more minutes — just hold them a few more minutes!' },
+        { speaker:'Captain Ironhook', portrait:'🏴‍☠️', text:'YOU HEARD THEM! NOBODY GETS PAST THIS SHORE! FIRE EVERYTHING!' },
+      ],
+      complete: [
+        { speaker:'Syrenna', portrait:'🧜', text:'THREE WAVES BROKEN! The fifth pillar — it\'s complete! All five are resonating! I can feel it — the circuit is closing—' },
+        { speaker:'The Chronicler', portrait:'✨📜', text:'NOT YET. The Leviathan itself is rising. It will not let the seal close without a fight. This is it, wizard. The final confrontation.' },
+        { speaker:'You', portrait:'🧙', text:'Then let it come. We\'re ready.' },
+        { speaker:'Admiral Quinn', portrait:'⚓', text:'The sea... the sea is rising around the island. Something enormous is coming up from underneath—' },
+        { speaker:'The Chronicler', portrait:'✨📜', text:'The Abyss Leviathan. Three thousand years imprisoned. Three thousand years of hunger. It will throw everything it has left at us. Do not waver.' },
+      ],
+      bonusRes: { wood:90, stone:85, crystal:70, gold:300 },
+    },
+
+    {
+      id: 15, act: 3, island: 'nexus',
+      title: 'The Final Reckoning',
+      sub:   'Seal the Leviathan forever',
+      objectives: [
+        { id:'leviathan', text:'Defeat the Abyss Leviathan', type:'boss' },
+      ],
+      waveCount: 1,
+      waves: [
+        { ships:[{type:'galleon',count:3},{type:'undead_galleon',count:2},{type:'ghost_ship',count:4}], pirates:15, isBoss:true }
+      ],
+      intro: [
+        { speaker:'The Chronicler', portrait:'✨📜', text:'The Crystal Pillars are ready. When the Leviathan is sufficiently weakened, all five will discharge simultaneously. It will be the most powerful crystal event in three thousand years.' },
+        { speaker:'You', portrait:'🧙', text:'And if the discharge doesn\'t finish it?' },
+        { speaker:'The Chronicler', portrait:'✨📜', text:'It will. I have seen this moment in the crystal patterns since I was bound here. This is the convergence. This has always been the convergence.' },
+        { speaker:'Syrenna', portrait:'🧜', text:'I will guide the discharge. The energy flows through me — it always has. This is what I was born for, wizard. Trust me.' },
+        { speaker:'Captain Ironhook', portrait:'🏴‍☠️', text:'(to his crew) This is the one, lads. The last one. Make it count. For everyone we lost out there.' },
+        { speaker:'Admiral Quinn', portrait:'⚓', text:'All hands — battle ready! Towers charged! Spells prepared! For the Crystal Archipelago — FOR EVERYONE WHO EVER SAILED THESE WATERS!' },
+        { speaker:'Elder Meryn', portrait:'👴', text:'Go well, wizard. Whatever happens — you have already saved us all. Everything else is just... making sure.' },
+        { speaker:'You', portrait:'🧙', text:'Then let\'s make sure.' },
+      ],
+      waveStart: [
+        { speaker:'The Chronicler', portrait:'✨📜', text:'*The ocean splits. The Abyss Leviathan rises — ancient, vast, its body threaded with stolen crystal light. A voice felt in bone, not heard with ears:*' },
+        { speaker:'Abyss Leviathan', portrait:'🌊💀', text:'SMALL THING. YOU CANNOT SEAL WHAT HAS ALWAYS BEEN FREE. I AM OLDER THAN YOUR ISLANDS. OLDER THAN YOUR MAGIC. I WILL OUTLAST YOU AS I OUTLASTED ALL THE OTHERS.' },
+        { speaker:'You', portrait:'🧙', text:'The others didn\'t have five crystal pillars, three island campaigns, a reformed pirate, a sea witch, an ancient spirit, and a very angry admiral. Watch me.' },
+      ],
+      victory: [
+        { speaker:'Syrenna', portrait:'🧜', text:'NOW! THE PILLARS — ALL FIVE — NOW!' },
+        { speaker:'The Chronicler', portrait:'✨📜', text:'*Five beams of pure crystal light converge. The Leviathan screams — a sound like the ocean tearing — and is driven down, down, down into the abyss. The seal closes. The crystal sings.*' },
+        { speaker:'Abyss Leviathan', portrait:'🌊💀', text:'...impossible. After three thousand years... IMPOSSIBLE.' },
+        { speaker:'Syrenna', portrait:'🧜', text:'The seal holds. I can feel it — strong, whole, complete. It will hold for ten thousand years.' },
+        { speaker:'The Chronicler', portrait:'✨📜', text:'It is done. The Leviathan is sealed. The Nexus is restored. Three thousand years of waiting... and it only took you fifteen chapters.' },
+        { speaker:'Captain Ironhook', portrait:'🏴‍☠️', text:'(quietly, looking at the sea) It\'s quiet. The sea is actually quiet.' },
+        { speaker:'Elder Meryn', portrait:'👴', text:'Come home, wizard. All of you. You\'ve earned it.' },
+        { speaker:'Admiral Quinn', portrait:'⚓', text:'The Crystal Archipelago lives. Every island, every shore, every sailor — free.' },
+        { speaker:'You', portrait:'🧙', text:'(pause, watching the sun rise over a calm sea) Not yet. I want to watch the sun rise over a free ocean. Just for a moment.' },
+        { speaker:'Syrenna', portrait:'🧜', text:'(smiling) Take all the time you need, wizard. The sea isn\'t going anywhere. Not tonight.' },
+      ],
+      complete: [
+        { speaker:'The Chronicler', portrait:'✨📜', text:'The Crystal Archipelago is saved. The seal will hold for ten thousand years. What you have done today will be remembered as long as these islands stand.' },
+        { speaker:'You', portrait:'🧙', text:'We all did it.' },
+        { speaker:'The Chronicler', portrait:'✨📜', text:'Yes. All of you. Every wall, every tower, every crystal harvested, every wave survived. All of it led here. Well done, wizard. Extraordinarily well done.' },
+      ],
+      bonusRes: {},
+    },
+
+  ],
+
+  // ── Speaker colors ───────────────────────────────────────────
+  speakerColors: {
+    'You':                '#88aaff',
+    'Elder Meryn':        '#ffd700',
+    'Admiral Quinn':      '#44cccc',
+    'Syrenna':            '#cc88ff',
+    'Captain Ironhook':   '#ff6644',
+    'Pirate King Dread':  '#ff3333',
+    'Commodore Rotgut':   '#88ff44',
+    'The Chronicler':     '#c8f0ff',
+    'Abyss Leviathan':    '#4466ff',
+  },
+};
